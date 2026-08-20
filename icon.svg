@@ -1,0 +1,71 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0e14"/>
+      <stop offset="100%" stop-color="#141824"/>
+    </linearGradient>
+    <linearGradient id="waveGrad" x1="0%" y1="50%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="50%" stop-color="#4facfe"/>
+      <stop offset="100%" stop-color="#00f2fe"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" rx="96" fill="url(#bgGrad)"/>
+  
+  <!-- Pulse wave path -->
+  <path d="M 80 256 
+           Q 120 256 140 240 
+           Q 160 224 180 256 
+           Q 200 288 220 256 
+           Q 240 224 260 256 
+           Q 280 288 300 256 
+           Q 320 224 340 256 
+           Q 360 288 380 256 
+           Q 400 224 432 256" 
+        stroke="url(#waveGrad)" 
+        stroke-width="12" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none" 
+        filter="url(#glow)"
+        opacity="0.95"/>
+  
+  <!-- Secondary thinner wave -->
+  <path d="M 80 256 
+           Q 130 260 150 250 
+           Q 170 240 190 256 
+           Q 210 272 230 256 
+           Q 250 240 270 256 
+           Q 290 272 310 256 
+           Q 330 240 350 256 
+           Q 370 272 390 256 
+           Q 410 240 432 256" 
+        stroke="#00f2fe" 
+        stroke-width="4" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none" 
+        opacity="0.6"
+        filter="url(#glow)"/>
+  
+  <!-- Center pulse dot -->
+  <circle cx="256" cy="256" r="18" fill="#00f2fe" filter="url(#glow)" opacity="0.9">
+    <animate attributeName="r" values="18;26;18" dur="2s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" values="0.9;0.4;0.9" dur="2s" repeatCount="indefinite"/>
+  </circle>
+  
+  <!-- Outer pulse ring -->
+  <circle cx="256" cy="256" r="40" fill="none" stroke="#00f2fe" stroke-width="3" opacity="0.3">
+    <animate attributeName="r" values="40;80;40" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+    <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" begin="0.5s"/>
+  </circle>
+</svg>
