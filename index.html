@@ -50,417 +50,160 @@
       gap: 16px;
     }
 
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
+    .brand { display: flex; align-items: center; gap: 12px; }
     .brand-logo {
-      width: 42px;
-      height: 42px;
+      width: 42px; height: 42px;
       background: linear-gradient(135deg, var(--recovery-green), var(--strain-blue));
       border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 900;
-      color: #000;
-      font-size: 22px;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 900; color: #000; font-size: 22px;
     }
+    .brand h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .brand p { font-size: 12px; color: var(--text-muted); }
 
-    .brand h1 {
-      font-size: 22px;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-    }
-
-    .brand p {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .header-actions {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
+    .header-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .data-stats { font-size: 12px; color: var(--text-muted); }
 
     .btn {
-      background: #202637;
-      color: #fff;
+      background: #202637; color: #fff;
       border: 1px solid var(--card-border);
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
+      padding: 10px 18px; border-radius: 8px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
       transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+      display: inline-flex; align-items: center; gap: 8px;
     }
-
-    .btn:hover {
-      background: #2a3248;
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #00e676, #00b0ff);
-      color: #000;
-      font-weight: 700;
-      border: none;
-    }
-
-    .btn-primary:hover {
-      opacity: 0.9;
-      box-shadow: 0 0 15px rgba(0, 230, 118, 0.3);
-    }
+    .btn:hover { background: #2a3248; border-color: rgba(255, 255, 255, 0.2); }
+    .btn-primary { background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; font-weight: 700; border: none; }
+    .btn-primary:hover { opacity: 0.9; box-shadow: 0 0 15px rgba(0, 230, 118, 0.3); }
 
     /* Dropzone */
     .dropzone-container {
       background: var(--card-bg);
       border: 2px dashed var(--card-border);
-      border-radius: 16px;
-      padding: 24px;
-      text-align: center;
-      margin-bottom: 24px;
-      transition: all 0.3s ease;
-      cursor: pointer;
-      position: relative;
+      border-radius: 16px; padding: 24px; text-align: center;
+      margin-bottom: 24px; transition: all 0.3s ease;
+      cursor: pointer; position: relative;
     }
-
-    .dropzone-container:hover, .dropzone-container.dragover {
-      border-color: var(--recovery-green);
-      background: rgba(0, 230, 118, 0.03);
-    }
-
-    .dropzone-icon {
-      font-size: 36px;
-      margin-bottom: 8px;
-    }
-
-    .dropzone-title {
-      font-size: 16px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .dropzone-subtitle {
-      font-size: 13px;
-      color: var(--text-muted);
-      max-width: 550px;
-      margin: 0 auto 12px;
-      line-height: 1.4;
-    }
-
-    #fileInput {
-      display: none;
-    }
-
+    .dropzone-container:hover, .dropzone-container.dragover { border-color: var(--recovery-green); background: rgba(0, 230, 118, 0.03); }
+    .dropzone-icon { font-size: 36px; margin-bottom: 8px; }
+    .dropzone-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+    .dropzone-subtitle { font-size: 13px; color: var(--text-muted); max-width: 550px; margin: 0 auto 12px; line-height: 1.4; }
+    #fileInput { display: none; }
     .status-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      background: rgba(0, 230, 118, 0.1);
-      color: var(--recovery-green);
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      background: rgba(0, 230, 118, 0.1); color: var(--recovery-green);
     }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .tab {
+      background: #141824; border: 1px solid var(--card-border); color: var(--text-muted);
+      padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer;
+      transition: all .2s;
+    }
+    .tab:hover { border-color: rgba(255, 255, 255, .2); color: var(--text-main); }
+    .tab.active { background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; border: none; }
+
+    .range-toggle { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+    .range-toggle button {
+      background: #202637; border: 1px solid var(--card-border); color: var(--text-muted);
+      padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .range-toggle button.active { background: #2a3248; color: var(--text-main); border-color: rgba(255, 255, 255, .25); }
+
+    .section { display: none; }
+    .section.active { display: block; animation: fade .25s ease; }
+    @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    .detail-head { display: flex; align-items: baseline; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+    .detail-head .big { font-size: 46px; font-weight: 800; line-height: 1; }
+    .detail-head .sub { font-size: 13px; color: var(--text-muted); }
 
     /* Grid Layout */
-    .dashboard-grid {
-      display: grid;
-      grid-template-columns: repeat(12, 1fr);
-      gap: 20px;
-      margin-bottom: 28px;
-    }
-
+    .dashboard-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 20px; margin-bottom: 28px; position: relative; }
     .card {
-      background: var(--card-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 16px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      overflow: hidden;
+      background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px;
+      padding: 20px; display: flex; flex-direction: column; position: relative; overflow: hidden;
     }
-
     .col-4 { grid-column: span 4; }
     .col-6 { grid-column: span 6; }
     .col-8 { grid-column: span 8; }
     .col-12 { grid-column: span 12; }
-
-    @media (max-width: 900px) {
-      .col-4, .col-6, .col-8 { grid-column: span 12; }
-    }
+    @media (max-width: 900px) { .col-4, .col-6, .col-8 { grid-column: span 12; } }
 
     .card-title {
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: var(--text-muted);
-      margin-bottom: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-muted); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;
     }
+
+    /* Charts */
+    .chart-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 18px; margin-bottom: 20px; }
+    .chart-card h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 6px; }
+    .chart-card .chart-sub { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    svg.chart { width: 100%; height: auto; display: block; }
+    .no-data { color: var(--text-muted); font-size: 14px; padding: 40px 0; text-align: center; }
+    .vitals-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 900px) { .vitals-charts { grid-template-columns: 1fr; } }
+    .legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 10px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+    .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
 
     /* Circular Score Gauge */
-    .gauge-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 6px 0;
-    }
-
-    .gauge-container {
-      position: relative;
-      width: 170px;
-      height: 170px;
-    }
-
-    .gauge-circle {
-      transform: rotate(-90deg);
-      width: 100%;
-      height: 100%;
-    }
-
-    .gauge-bg {
-      fill: none;
-      stroke: #202637;
-      stroke-width: 12;
-    }
-
-    .gauge-fill {
-      fill: none;
-      stroke: var(--recovery-green);
-      stroke-width: 12;
-      stroke-linecap: round;
-      stroke-dasharray: 440;
-      stroke-dashoffset: 100;
-      transition: stroke-dashoffset 1s ease-in-out, stroke 0.3s;
-    }
-
-    .gauge-center {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      text-align: center;
-    }
-
-    .gauge-score {
-      font-size: 42px;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    .gauge-label {
-      font-size: 10px;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      margin-top: 4px;
-    }
-
-    .metric-sublist {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      width: 100%;
-      margin-top: 16px;
-      padding-top: 16px;
-      border-top: 1px solid var(--card-border);
-    }
-
-    .submetric-item {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .submetric-val {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .submetric-lbl {
-      font-size: 11px;
-      color: var(--text-muted);
-    }
+    .gauge-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 0; }
+    .gauge-container { position: relative; width: 170px; height: 170px; }
+    .gauge-circle { transform: rotate(-90deg); width: 100%; height: 100%; }
+    .gauge-bg { fill: none; stroke: #202637; stroke-width: 12; }
+    .gauge-fill { fill: none; stroke: var(--recovery-green); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 440; stroke-dashoffset: 100; transition: stroke-dashoffset 1s ease-in-out, stroke 0.3s; }
+    .gauge-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
+    .gauge-score { font-size: 42px; font-weight: 800; line-height: 1; }
+    .gauge-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
+    .metric-sublist { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--card-border); }
+    .submetric-item { display: flex; flex-direction: column; }
+    .submetric-val { font-size: 18px; font-weight: 700; color: var(--text-main); }
+    .submetric-lbl { font-size: 11px; color: var(--text-muted); }
 
     /* Strain Gauge */
-    .strain-fill {
-      stroke: var(--strain-blue);
-    }
+    .strain-fill { stroke: var(--strain-blue); }
 
     /* Vitals Grid */
-    .vitals-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-      height: 100%;
-    }
-
-    .vital-box {
-      background: #1a202c;
-      border-radius: 12px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      border-left: 4px solid var(--vitals-cyan);
-    }
-
-    .vital-name {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-weight: 600;
-    }
-
-    .vital-value {
-      font-size: 22px;
-      font-weight: 800;
-      margin: 6px 0;
-    }
-
-    .vital-status {
-      font-size: 11px;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
+    .vitals-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; height: 100%; }
+    .vital-box { background: #1a202c; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--vitals-cyan); }
+    .vital-name { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    .vital-value { font-size: 22px; font-weight: 800; margin: 6px 0; }
+    .vital-status { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
     .status-ok { color: var(--recovery-green); }
+    .status-warn { color: var(--recovery-yellow); }
+    .status-bad { color: var(--recovery-red); }
 
     /* Insights Section */
-    .insights-container {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .insight-card {
-      background: #1a202c;
-      border-radius: 12px;
-      padding: 14px;
-      display: flex;
-      gap: 14px;
-      align-items: flex-start;
-      border-left: 4px solid var(--text-muted);
-    }
-
-    .insight-card.good {
-      border-left-color: var(--recovery-green);
-      background: rgba(0, 230, 118, 0.05);
-    }
-
-    .insight-card.wrong {
-      border-left-color: var(--recovery-red);
-      background: rgba(255, 23, 68, 0.05);
-    }
-
-    .insight-card.info {
-      border-left-color: var(--strain-blue);
-      background: rgba(41, 182, 246, 0.05);
-    }
-
-    .insight-icon {
-      font-size: 20px;
-      padding-top: 2px;
-    }
-
-    .insight-content {
-      flex: 1;
-    }
-
-    .insight-title {
-      font-size: 14px;
-      font-weight: 700;
-      margin-bottom: 4px;
-    }
-
-    .insight-body {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.4;
-    }
+    .insights-container { display: flex; flex-direction: column; gap: 14px; }
+    .insight-card { background: #1a202c; border-radius: 12px; padding: 14px; display: flex; gap: 14px; align-items: flex-start; border-left: 4px solid var(--text-muted); }
+    .insight-card.good { border-left-color: var(--recovery-green); background: rgba(0, 230, 118, 0.05); }
+    .insight-card.wrong { border-left-color: var(--recovery-red); background: rgba(255, 23, 68, 0.05); }
+    .insight-card.info { border-left-color: var(--strain-blue); background: rgba(41, 182, 246, 0.05); }
+    .insight-icon { font-size: 20px; padding-top: 2px; }
+    .insight-content { flex: 1; }
+    .insight-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+    .insight-body { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
 
     /* Sleep Stages Bar */
-    .sleep-bar-container {
-      margin-top: 8px;
-    }
-
-    .sleep-bar {
-      display: flex;
-      height: 22px;
-      border-radius: 6px;
-      overflow: hidden;
-      margin-bottom: 12px;
-    }
-
+    .sleep-bar-container { margin-top: 8px; }
+    .sleep-bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
     .stage-deep { background: #5e35b1; }
     .stage-rem { background: #8e24aa; }
     .stage-core { background: #1e88e5; }
     .stage-awake { background: #e53935; }
-
-    .sleep-legend {
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .legend-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 2px;
-    }
+    .sleep-legend { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 
     /* Loader Overlay */
     .loader {
-      display: none;
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(11, 14, 20, 0.85);
-      backdrop-filter: blur(4px);
-      z-index: 10;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 12px;
-      border-radius: 16px;
+      display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(11, 14, 20, 0.85); backdrop-filter: blur(4px); z-index: 10;
+      align-items: center; justify-content: center; flex-direction: column; gap: 12px; border-radius: 16px;
     }
-
-    .spinner {
-      width: 36px;
-      height: 36px;
-      border: 4px solid var(--card-border);
-      border-top-color: var(--recovery-green);
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
+    .spinner { width: 36px; height: 36px; border: 4px solid var(--card-border); border-top-color: var(--recovery-green); border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -475,9 +218,8 @@
     </div>
 
     <div class="header-actions">
-      <button class="btn btn-primary" onclick="loadSampleData()">
-        ⚡ Load Sample Apple Health Data
-      </button>
+      <span class="data-stats" id="dataStats">No data loaded</span>
+      <button class="btn btn-primary" onclick="loadSampleData()">⚡ Load Sample Data</button>
     </div>
   </header>
 
@@ -493,180 +235,251 @@
     <div class="status-badge" id="uploadStatus">Ready for export.zip file</div>
   </div>
 
-  <!-- Dashboard Content -->
-  <div class="dashboard-grid" style="position: relative;">
-    <div class="loader" id="loader">
-      <div class="spinner"></div>
-      <div id="loaderText" style="font-weight: 600;">Parsing Apple Health export.xml...</div>
-    </div>
+  <!-- Tabs -->
+  <nav class="tabs" id="tabs">
+    <button class="tab active" data-tab="overview">Overview</button>
+    <button class="tab" data-tab="recovery">Recovery</button>
+    <button class="tab" data-tab="strain">Strain</button>
+    <button class="tab" data-tab="sleep">Sleep</button>
+    <button class="tab" data-tab="vitals">Vitals</button>
+  </nav>
 
-    <!-- RECOVERY CARD -->
-    <div class="card col-4">
-      <div class="card-title">
-        <span>Recovery Score</span>
-        <span id="recoveryCategory" style="color: var(--recovery-green); font-size: 11px;">OPTIMAL</span>
-      </div>
-
-      <div class="gauge-wrapper">
-        <div class="gauge-container">
-          <svg class="gauge-circle" viewBox="0 0 160 160">
-            <circle class="gauge-bg" cx="80" cy="80" r="70"></circle>
-            <circle class="gauge-fill" id="recoveryCircle" cx="80" cy="80" r="70"></circle>
-          </svg>
-          <div class="gauge-center">
-            <div class="gauge-score" id="recoveryScore" style="color: var(--recovery-green);">86%</div>
-            <div class="gauge-label">GREEN ZONE</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="metric-sublist">
-        <div class="submetric-item">
-          <span class="submetric-val" id="hrvVal">68 ms</span>
-          <span class="submetric-lbl">HRV (SDNN)</span>
-        </div>
-        <div class="submetric-item">
-          <span class="submetric-val" id="rhrVal">52 bpm</span>
-          <span class="submetric-lbl">Resting HR</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- STRAIN CARD -->
-    <div class="card col-4">
-      <div class="card-title">
-        <span>Day Strain</span>
-        <span style="color: var(--strain-blue); font-size: 11px;">HIGH TARGET</span>
-      </div>
-
-      <div class="gauge-wrapper">
-        <div class="gauge-container">
-          <svg class="gauge-circle" viewBox="0 0 160 160">
-            <circle class="gauge-bg" cx="80" cy="80" r="70"></circle>
-            <circle class="gauge-fill strain-fill" id="strainCircle" cx="80" cy="80" r="70"></circle>
-          </svg>
-          <div class="gauge-center">
-            <div class="gauge-score" id="strainScore" style="color: var(--strain-blue);">14.2</div>
-            <div class="gauge-label">MODERATE / HIGH</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="metric-sublist">
-        <div class="submetric-item">
-          <span class="submetric-val" id="calsVal">740 kcal</span>
-          <span class="submetric-lbl">Active Burn</span>
-        </div>
-        <div class="submetric-item">
-          <span class="submetric-val" id="stepsVal">11,420</span>
-          <span class="submetric-lbl">Steps Recorded</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- SLEEP PERFORMANCE -->
-    <div class="card col-4">
-      <div class="card-title">
-        <span>Sleep Performance</span>
-        <span style="color: var(--sleep-purple); font-size: 11px;">91% OF NEED</span>
-      </div>
-
-      <div style="margin: 6px 0 14px;">
-        <div style="font-size: 30px; font-weight: 800;" id="sleepDuration">7h 48m</div>
-        <div style="font-size: 12px; color: var(--text-muted);">Optimal Sleep Target: 8h 15m</div>
-      </div>
-
-      <div class="sleep-bar-container">
-        <div class="sleep-bar">
-          <div class="stage-deep" style="width: 25%;" title="Deep: 1h 55m"></div>
-          <div class="stage-rem" style="width: 28%;" title="REM: 2h 10m"></div>
-          <div class="stage-core" style="width: 38%;" title="Core: 3h 00m"></div>
-          <div class="stage-awake" style="width: 9%;" title="Awake: 43m"></div>
-        </div>
-
-        <div class="sleep-legend">
-          <div class="legend-item"><div class="legend-dot stage-deep"></div>Deep (25%)</div>
-          <div class="legend-item"><div class="legend-dot stage-rem"></div>REM (28%)</div>
-          <div class="legend-item"><div class="legend-dot stage-core"></div>Core (38%)</div>
-          <div class="legend-item"><div class="legend-dot stage-awake"></div>Awake (9%)</div>
-        </div>
-      </div>
-
-      <div style="margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--recovery-green); font-weight: 600;">
-        ✓ Restorative Sleep (Deep + REM) is at 53% (Optimal)
-      </div>
-    </div>
-
-    <!-- HEALTH MONITOR VITALS -->
-    <div class="card col-6">
-      <div class="card-title">
-        <span>Health Monitor Vitals</span>
-        <span style="font-size: 11px; color: var(--vitals-cyan);">30-DAY BASELINE</span>
-      </div>
-
-      <div class="vitals-grid">
-        <div class="vital-box" style="border-left-color: var(--recovery-green);">
-          <div class="vital-name">Resting Heart Rate</div>
-          <div class="vital-value" id="vitalRHR">52 bpm</div>
-          <div class="vital-status status-ok">✓ 2 bpm below 30d avg</div>
-        </div>
-
-        <div class="vital-box" style="border-left-color: var(--recovery-green);">
-          <div class="vital-name">HRV Baseline</div>
-          <div class="vital-value" id="vitalHRV">68 ms</div>
-          <div class="vital-status status-ok">✓ +9% above baseline</div>
-        </div>
-
-        <div class="vital-box" style="border-left-color: var(--vitals-cyan);">
-          <div class="vital-name">Blood Oxygen (SpO2)</div>
-          <div class="vital-value" id="vitalSpO2">98.5%</div>
-          <div class="vital-status status-ok">✓ Normal (95-100%)</div>
-        </div>
-
-        <div class="vital-box" style="border-left-color: var(--vitals-cyan);">
-          <div class="vital-name">Respiratory Rate</div>
-          <div class="vital-value" id="vitalResp">14.2 rpm</div>
-          <div class="vital-status status-ok">✓ Stable baseline</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- WEEKLY DIGEST & ACTIONABLE INSIGHTS -->
-    <div class="card col-6">
-      <div class="card-title">
-        <span>Weekly Digest: What's Good vs Wrong</span>
-        <span style="font-size: 11px; color: var(--text-muted);">AI ACTION REPORT</span>
-      </div>
-
-      <div class="insights-container" id="insightsList">
-        <div class="insight-card good">
-          <div class="insight-icon">🟢</div>
-          <div class="insight-content">
-            <div class="insight-title" style="color: var(--recovery-green);">High Recovery & HRV Spike</div>
-            <div class="insight-body">Your HRV averaged 68ms (+9% above your baseline). Your nervous system is primed for intense training!</div>
-          </div>
-        </div>
-
-        <div class="insight-card wrong">
-          <div class="insight-icon">🔴</div>
-          <div class="insight-content">
-            <div class="insight-title" style="color: var(--recovery-red);">Sleep Debt Accumulation Mid-Week</div>
-            <div class="insight-body">You accumulated 1.2 hours of sleep debt mid-week due to late bedtime. REM sleep dropped 18% on Friday.</div>
-          </div>
-        </div>
-
-        <div class="insight-card info">
-          <div class="insight-icon">💡</div>
-          <div class="insight-content">
-            <div class="insight-title" style="color: var(--strain-blue);">Actionable Recommendation</div>
-            <div class="insight-body">Aim for a 30-minute earlier bedtime tonight to clear sleep debt before weekend high-strain workouts.</div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
+  <div class="range-toggle" id="rangeToggle">
+    <button data-gran="day" class="active">Daily</button>
+    <button data-gran="week">Weekly</button>
+    <button data-gran="month">Monthly</button>
   </div>
+
+  <!-- ===================== OVERVIEW ===================== -->
+  <section class="section active" id="sec-overview">
+    <div class="dashboard-grid">
+      <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <div id="loaderText" style="font-weight: 600;">Parsing Apple Health export.xml...</div>
+      </div>
+
+      <!-- RECOVERY CARD -->
+      <div class="card col-4">
+        <div class="card-title">
+          <span>Recovery Score</span>
+          <span id="recoveryCategory" style="color: var(--recovery-green); font-size: 11px;">—</span>
+        </div>
+        <div class="gauge-wrapper">
+          <div class="gauge-container">
+            <svg class="gauge-circle" viewBox="0 0 160 160">
+              <circle class="gauge-bg" cx="80" cy="80" r="70"></circle>
+              <circle class="gauge-fill" id="recoveryCircle" cx="80" cy="80" r="70"></circle>
+            </svg>
+            <div class="gauge-center">
+              <div class="gauge-score" id="recoveryScore" style="color: var(--recovery-green);">—</div>
+              <div class="gauge-label">RECOVERY</div>
+            </div>
+          </div>
+        </div>
+        <div class="metric-sublist">
+          <div class="submetric-item">
+            <span class="submetric-val" id="hrvVal">—</span>
+            <span class="submetric-lbl">HRV (SDNN) latest</span>
+          </div>
+          <div class="submetric-item">
+            <span class="submetric-val" id="rhrVal">—</span>
+            <span class="submetric-lbl">Resting HR latest</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STRAIN CARD -->
+      <div class="card col-4">
+        <div class="card-title">
+          <span>Day Strain</span>
+          <span style="color: var(--strain-blue); font-size: 11px;">FROM ACTIVITY</span>
+        </div>
+        <div class="gauge-wrapper">
+          <div class="gauge-container">
+            <svg class="gauge-circle" viewBox="0 0 160 160">
+              <circle class="gauge-bg" cx="80" cy="80" r="70"></circle>
+              <circle class="gauge-fill strain-fill" id="strainCircle" cx="80" cy="80" r="70"></circle>
+            </svg>
+            <div class="gauge-center">
+              <div class="gauge-score" id="strainScore" style="color: var(--strain-blue);">—</div>
+              <div class="gauge-label">STRAIN</div>
+            </div>
+          </div>
+        </div>
+        <div class="metric-sublist">
+          <div class="submetric-item">
+            <span class="submetric-val" id="calsVal">—</span>
+            <span class="submetric-lbl">Active Burn (latest day)</span>
+          </div>
+          <div class="submetric-item">
+            <span class="submetric-val" id="stepsVal">—</span>
+            <span class="submetric-lbl">Steps (latest day)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SLEEP PERFORMANCE -->
+      <div class="card col-4">
+        <div class="card-title">
+          <span>Sleep Performance</span>
+          <span id="sleepCat" style="color: var(--sleep-purple); font-size: 11px;">—</span>
+        </div>
+        <div style="margin: 6px 0 14px;">
+          <div style="font-size: 30px; font-weight: 800;" id="sleepDuration">—</div>
+          <div style="font-size: 12px; color: var(--text-muted);">Optimal Sleep Target: 8h 15m</div>
+        </div>
+        <div class="sleep-bar-container">
+          <div class="sleep-bar">
+            <div class="stage-deep" id="ovDeep" style="width: 0%;"></div>
+            <div class="stage-rem" id="ovRem" style="width: 0%;"></div>
+            <div class="stage-core" id="ovCore" style="width: 0%;"></div>
+            <div class="stage-awake" id="ovAwake" style="width: 0%;"></div>
+          </div>
+          <div class="sleep-legend">
+            <div class="legend-item"><div class="legend-dot stage-deep"></div>Deep <span id="ovDeepL">0%</span></div>
+            <div class="legend-item"><div class="legend-dot stage-rem"></div>REM <span id="ovRemL">0%</span></div>
+            <div class="legend-item"><div class="legend-dot stage-core"></div>Core <span id="ovCoreL">0%</span></div>
+            <div class="legend-item"><div class="legend-dot stage-awake"></div>Awake <span id="ovAwakeL">0%</span></div>
+          </div>
+        </div>
+        <div style="margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--recovery-green); font-weight: 600;" id="ovRestorative">
+          Restorative Sleep (Deep + REM)
+        </div>
+      </div>
+
+      <!-- HEALTH MONITOR VITALS -->
+      <div class="card col-6">
+        <div class="card-title">
+          <span>Health Monitor Vitals</span>
+          <span style="font-size: 11px; color: var(--vitals-cyan);">LATEST READING</span>
+        </div>
+        <div class="vitals-grid">
+          <div class="vital-box" style="border-left-color: var(--recovery-green);">
+            <div class="vital-name">Resting Heart Rate</div>
+            <div class="vital-value" id="vitalRHR">—</div>
+            <div class="vital-status" id="vitalRHRs">—</div>
+          </div>
+          <div class="vital-box" style="border-left-color: var(--recovery-green);">
+            <div class="vital-name">HRV Baseline</div>
+            <div class="vital-value" id="vitalHRV">—</div>
+            <div class="vital-status" id="vitalHRVs">—</div>
+          </div>
+          <div class="vital-box" style="border-left-color: var(--vitals-cyan);">
+            <div class="vital-name">Blood Oxygen (SpO2)</div>
+            <div class="vital-value" id="vitalSpO2">—</div>
+            <div class="vital-status" id="vitalSpO2s">—</div>
+          </div>
+          <div class="vital-box" style="border-left-color: var(--vitals-cyan);">
+            <div class="vital-name">Respiratory Rate</div>
+            <div class="vital-value" id="vitalResp">—</div>
+            <div class="vital-status" id="vitalResps">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WEEKLY DIGEST & ACTIONABLE INSIGHTS -->
+      <div class="card col-6">
+        <div class="card-title">
+          <span>What's Good vs Wrong</span>
+          <span style="font-size: 11px; color: var(--text-muted);">ACTION REPORT</span>
+        </div>
+        <div class="insights-container" id="insightsList">
+          <div class="no-data">Load your Apple Health export or sample data to generate insights.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== RECOVERY ===================== -->
+  <section class="section" id="sec-recovery">
+    <div class="detail-head">
+      <div class="big" id="recBig">—</div>
+      <div class="sub" id="recSub">Recovery Score — HRV-driven</div>
+    </div>
+    <div class="chart-card">
+      <h3>HRV (SDNN) Trend</h3>
+      <div class="chart-sub" id="hrvSub">Your nervous-system recovery signal vs 30-day baseline.</div>
+      <svg class="chart" id="hrvChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card">
+      <h3>Resting Heart Rate Trend</h3>
+      <div class="chart-sub">Lower and stable RHR supports higher recovery.</div>
+      <svg class="chart" id="rhrChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card">
+      <h3>Recovery Insights</h3>
+      <div class="insights-container" id="recInsights"><div class="no-data">No data.</div></div>
+    </div>
+  </section>
+
+  <!-- ===================== STRAIN ===================== -->
+  <section class="section" id="sec-strain">
+    <div class="detail-head">
+      <div class="big" id="strainBig">—</div>
+      <div class="sub" id="strainSub">Day Strain — derived from steps & active energy</div>
+    </div>
+    <div class="chart-card">
+      <h3>Steps Trend</h3>
+      <div class="chart-sub">Daily step count over the selected range.</div>
+      <svg class="chart" id="stepsChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card">
+      <h3>Active Energy Burned (kcal)</h3>
+      <div class="chart-sub">Active calories expended per period.</div>
+      <svg class="chart" id="energyChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </section>
+
+  <!-- ===================== SLEEP ===================== -->
+  <section class="section" id="sec-sleep">
+    <div class="detail-head">
+      <div class="big" id="sleepBig">—</div>
+      <div class="sub" id="sleepSub">Total sleep time vs 8h 15m optimal need</div>
+    </div>
+    <div class="chart-card">
+      <h3>Total Sleep Duration</h3>
+      <div class="chart-sub">Dashed line = optimal target (8h 15m).</div>
+      <svg class="chart" id="sleepTotalChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="chart-card">
+      <h3>Sleep Stage Composition</h3>
+      <div class="chart-sub">Deep, REM, Core and Awake minutes per period (parsed from your export).</div>
+      <svg class="chart" id="sleepStageChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="legend-row">
+        <div class="legend-item"><div class="legend-dot" style="background:#5e35b1"></div>Deep</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#8e24aa"></div>REM</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#1e88e5"></div>Core</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#607d8b"></div>Unspecified</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e53935"></div>Awake</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== VITALS ===================== -->
+  <section class="section" id="sec-vitals">
+    <div class="detail-head">
+      <div class="big" style="font-size:28px;">Health Vitals Trends</div>
+      <div class="sub">Long-range view of your core biometric signals</div>
+    </div>
+    <div class="vitals-charts">
+      <div class="chart-card">
+        <h3>HRV (SDNN) ms</h3>
+        <svg class="chart" id="vHrv" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="chart-card">
+        <h3>Resting HR bpm</h3>
+        <svg class="chart" id="vRhr" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="chart-card">
+        <h3>Blood Oxygen (SpO2) %</h3>
+        <svg class="chart" id="vSpo2" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="chart-card">
+        <h3>Respiratory Rate rpm</h3>
+        <svg class="chart" id="vResp" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+  </section>
 
   <script>
     // Register PWA service worker
@@ -674,87 +487,475 @@
       navigator.serviceWorker.register('sw.js').catch(err => console.log('SW reg error:', err));
     }
 
-    // Gauge animator
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    const SLEEP_NEED_H = 8.25;
+    const INTEREST = new Set([
+      'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
+      'HKQuantityTypeIdentifierRestingHeartRate',
+      'HKQuantityTypeIdentifierOxygenSaturation',
+      'HKQuantityTypeIdentifierRespiratoryRate',
+      'HKQuantityTypeIdentifierStepCount',
+      'HKQuantityTypeIdentifierActiveEnergyBurned',
+      'HKCategoryTypeIdentifierSleepAnalysis'
+    ]);
+
+    // ---------------- Data model ----------------
+    let DATA = { hrv: [], rhr: [], spo2: [], resp: [], steps: [], energy: [], sleep: [] };
+    let hrvBaseline = 0;
+    let currentTab = 'overview';
+    let currentGran = 'day';
+
+    function resetData() {
+      DATA = { hrv: [], rhr: [], spo2: [], resp: [], steps: [], energy: [], sleep: [] };
+      hrvBaseline = 0;
+    }
+
+    function sleepStage(v) {
+      if (/Deep/.test(v)) return 'deep';
+      if (/REM/.test(v)) return 'rem';
+      if (/Core/.test(v)) return 'core';
+      if (/Awake/.test(v)) return 'awake';
+      if (/Unspecified|Asleep/.test(v) && !/InBed/.test(v)) return 'unspec';
+      return null;
+    }
+
+    // ---------------- Parsing ----------------
+    function parseHealthXml(text) {
+      showLoader('Parsing Apple Health export.xml...');
+      setTimeout(() => {
+        resetData();
+        const re = /<Record\b([^>]*)\/?>/g;
+        let m, count = 0;
+        while ((m = re.exec(text)) !== null) {
+          const tag = m[1];
+          const typeM = tag.match(/type="([^"]+)"/);
+          if (!typeM || !INTEREST.has(typeM[1])) continue;
+          const type = typeM[1];
+          const startM = tag.match(/startDate="([^"]+)"/);
+          if (!startM) continue;
+          const date = startM[1].slice(0, 10);
+
+          if (type === 'HKCategoryTypeIdentifierSleepAnalysis') {
+            const valM = tag.match(/value="([^"]+)"/);
+            const endM = tag.match(/endDate="([^"]+)"/);
+            if (!valM || !endM) continue;
+            const stage = sleepStage(valM[1]);
+            if (!stage) continue;
+            const hours = (new Date(endM[1]) - new Date(startM[1])) / 3600000;
+            if (hours > 0 && hours < 24) DATA.sleep.push({ date, stage, hours });
+          } else {
+            const valM = tag.match(/value="([\d.]+)"/);
+            if (!valM) continue;
+            let v = parseFloat(valM[1]);
+            if (type === 'HKQuantityTypeIdentifierOxygenSaturation') v = v < 1 ? v * 100 : v;
+            if (type === 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN') DATA.hrv.push({ date, value: v });
+            else if (type === 'HKQuantityTypeIdentifierRestingHeartRate') DATA.rhr.push({ date, value: v });
+            else if (type === 'HKQuantityTypeIdentifierRespiratoryRate') DATA.resp.push({ date, value: v });
+            else if (type === 'HKQuantityTypeIdentifierStepCount') DATA.steps.push({ date, value: v });
+            else if (type === 'HKQuantityTypeIdentifierActiveEnergyBurned') DATA.energy.push({ date, value: v });
+          }
+          count++;
+          if (count > 3000000) break;
+        }
+        finalize('✓ Parsed ' + count.toLocaleString() + ' records');
+      }, 300);
+    }
+
+    // ---------------- Aggregation ----------------
+    function bucketKey(dateStr, gran) {
+      if (gran === 'day') return dateStr;
+      const d = new Date(dateStr + 'T00:00:00');
+      if (gran === 'week') { const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day); return d.toISOString().slice(0, 10); }
+      if (gran === 'month') return dateStr.slice(0, 7);
+    }
+    function rangeBuckets(min, max, gran) {
+      const keys = [];
+      let d = new Date(min + 'T00:00:00');
+      const end = new Date(max + 'T00:00:00');
+      if (gran === 'month') {
+        d = new Date(d.getFullYear(), d.getMonth(), 1); end.setDate(1);
+        while (d <= end) { keys.push(d.toISOString().slice(0, 7)); d.setMonth(d.getMonth() + 1); }
+      } else if (gran === 'week') {
+        const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day);
+        while (d <= end) { keys.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 7); }
+      } else {
+        while (d <= end) { keys.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+      }
+      return keys;
+    }
+    function labelFor(key, gran) {
+      if (gran === 'month') { const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return names[+key.split('-')[1] - 1]; }
+      const d = new Date(key + 'T00:00:00');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return gran === 'week' ? 'W' + mm + '/' + dd : mm + '/' + dd;
+    }
+    function buildSeries(records, gran, agg) {
+      if (!records.length) return [];
+      const map = new Map();
+      records.forEach(r => { const k = bucketKey(r.date, gran); if (!map.has(k)) map.set(k, []); map.get(k).push(r.value); });
+      const dates = records.map(r => r.date);
+      const min = dates.reduce((a, b) => a < b ? a : b);
+      const max = dates.reduce((a, b) => a > b ? a : b);
+      return rangeBuckets(min, max, gran).map(k => {
+        const arr = map.get(k);
+        if (!arr) return { label: labelFor(k, gran), value: null };
+        const v = agg === 'sum' ? arr.reduce((a, b) => a + b, 0) : arr.reduce((a, b) => a + b, 0) / arr.length;
+        return { label: labelFor(k, gran), value: v };
+      });
+    }
+    function buildSleepSeries(gran) {
+      if (!DATA.sleep.length) return null;
+      const map = new Map();
+      DATA.sleep.forEach(s => {
+        const k = bucketKey(s.date, gran);
+        if (!map.has(k)) map.set(k, { core: 0, deep: 0, rem: 0, unspec: 0, awake: 0 });
+        map.get(k)[s.stage] += s.hours;
+      });
+      const dates = DATA.sleep.map(s => s.date);
+      const min = dates.reduce((a, b) => a < b ? a : b);
+      const max = dates.reduce((a, b) => a > b ? a : b);
+      const labels = [], stages = { core: [], deep: [], rem: [], unspec: [], awake: [] };
+      rangeBuckets(min, max, gran).forEach(k => {
+        const o = map.get(k) || { core: 0, deep: 0, rem: 0, unspec: 0, awake: 0 };
+        labels.push(labelFor(k, gran));
+        stages.core.push(o.core); stages.deep.push(o.deep); stages.rem.push(o.rem); stages.unspec.push(o.unspec); stages.awake.push(o.awake);
+      });
+      return { labels, stages };
+    }
+    function lastNonNull(series) { for (let i = series.length - 1; i >= 0; i--) if (series[i].value != null) return series[i]; return null; }
+    function latestSleep() {
+      if (!DATA.sleep.length) return null;
+      const dates = DATA.sleep.map(s => s.date);
+      const max = dates.reduce((a, b) => a > b ? a : b);
+      const rows = DATA.sleep.filter(s => s.date === max);
+      if (!rows.length) return null;
+      const o = { core: 0, deep: 0, rem: 0, unspec: 0, awake: 0 };
+      rows.forEach(r => o[r.stage] += r.hours);
+      o.total = o.core + o.deep + o.rem + o.unspec;
+      o.date = max;
+      return o;
+    }
+
+    // ---------------- Charts (dependency-free SVG) ----------------
+    function el(tag, attrs) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+    function showNoData(svg, msg) { svg.innerHTML = ''; const t = el('text', { x: 300, y: 130, fill: '#94a3b8', 'font-size': 13, 'text-anchor': 'middle' }); t.textContent = msg || 'No data available'; svg.appendChild(t); }
+
+    function lineChart(svg, points, opts = {}) {
+      svg.innerHTML = '';
+      if (!points.length) { showNoData(svg); return; }
+      const W = 600, H = 260, padL = 46, padR = 16, padT = 16, padB = 34;
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const vals = points.map(p => p.value).filter(v => v != null);
+      if (!vals.length) { showNoData(svg); return; }
+      let min = opts.min != null ? opts.min : Math.min(...vals);
+      let max = opts.max != null ? opts.max : Math.max(...vals);
+      if (min === max) { max = min + 1; }
+      const range = max - min; min -= range * 0.12; max += range * 0.12;
+      const n = points.length;
+      const x = i => padL + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+      const y = v => padT + plotH - ((v - min) / (max - min)) * plotH;
+      const color = opts.color || '#00e676';
+
+      for (let t = 0; t <= 4; t++) {
+        const v = min + (max - min) * (t / 4), yy = y(v);
+        svg.appendChild(el('line', { x1: padL, y1: yy, x2: W - padR, y2: yy, stroke: 'rgba(255,255,255,0.06)', 'stroke-width': 1 }));
+        const tx = el('text', { x: padL - 6, y: yy + 3, fill: '#94a3b8', 'font-size': 10, 'text-anchor': 'end' });
+        tx.textContent = (opts.round ? Math.round(v) : v.toFixed(opts.decimals != null ? opts.decimals : 0)) + (opts.unit || '');
+        svg.appendChild(tx);
+      }
+      if (opts.baseline != null) {
+        const by = y(opts.baseline);
+        svg.appendChild(el('line', { x1: padL, y1: by, x2: W - padR, y2: by, stroke: '#ffea00', 'stroke-width': 1.2, 'stroke-dasharray': '5 4', opacity: 0.7 }));
+      }
+      // segments (skip nulls)
+      const segs = []; let cur = [];
+      points.forEach((p, i) => { if (p.value == null) { if (cur.length) segs.push(cur); cur = []; } else cur.push(i); });
+      if (cur.length) segs.push(cur);
+      segs.forEach(seg => {
+        let path = ''; seg.forEach((i, k) => { path += (k === 0 ? 'M' : 'L') + x(i) + ' ' + y(points[i].value) + ' '; });
+        svg.appendChild(el('path', { d: path, fill: 'none', stroke: color, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+        const first = seg[0], last = seg[seg.length - 1];
+        let ap = 'M' + x(first) + ' ' + y(points[first].value) + ' ';
+        seg.forEach(i => { ap += 'L' + x(i) + ' ' + y(points[i].value) + ' '; });
+        ap += 'L' + x(last) + ' ' + (padT + plotH) + ' L' + x(first) + ' ' + (padT + plotH) + ' Z';
+        svg.insertBefore(el('path', { d: ap, fill: color, opacity: 0.12 }), svg.firstChild);
+        seg.forEach(i => svg.appendChild(el('circle', { cx: x(i), cy: y(points[i].value), r: 2.4, fill: color })));
+      });
+      const step = Math.ceil(n / 7);
+      for (let i = 0; i < n; i += step) {
+        const tx = el('text', { x: x(i), y: H - 12, fill: '#94a3b8', 'font-size': 9, 'text-anchor': 'middle' });
+        tx.textContent = points[i].label; svg.appendChild(tx);
+      }
+    }
+
+    function stackedBarChart(svg, labels, stages) {
+      svg.innerHTML = '';
+      const n = labels.length;
+      if (!n) { showNoData(svg); return; }
+      const W = 600, H = 260, padL = 46, padR = 16, padT = 16, padB = 34;
+      const plotW = W - padL - padR, plotH = H - padT - padB;
+      const totals = labels.map((_, i) => stages.core[i] + stages.deep[i] + stages.rem[i] + stages.unspec[i] + stages.awake[i]);
+      const max = Math.max(...totals, 1) * 1.1;
+      const y = v => padT + plotH - (v / max) * plotH;
+      const colors = { deep: '#5e35b1', rem: '#8e24aa', core: '#1e88e5', unspec: '#607d8b', awake: '#e53935' };
+      const order = ['deep', 'rem', 'core', 'unspec', 'awake'];
+      for (let t = 0; t <= 4; t++) {
+        const v = max * (t / 4), yy = y(v);
+        svg.appendChild(el('line', { x1: padL, y1: yy, x2: W - padR, y2: yy, stroke: 'rgba(255,255,255,0.06)' }));
+        const tx = el('text', { x: padL - 6, y: yy + 3, fill: '#94a3b8', 'font-size': 10, 'text-anchor': 'end' });
+        tx.textContent = Math.round(v) + 'h'; svg.appendChild(tx);
+      }
+      const slot = plotW / n, bw = slot * 0.62;
+      for (let i = 0; i < n; i++) {
+        const x0 = padL + i * slot + (slot - bw) / 2;
+        let acc = 0;
+        order.forEach(st => {
+          const val = stages[st][i];
+          if (val > 0.01) {
+            const yy = y(acc + val), h = y(acc) - y(acc + val);
+            svg.appendChild(el('rect', { x: x0, y: yy, width: bw, height: h, fill: colors[st], rx: 1 }));
+            acc += val;
+          }
+        });
+        const tx = el('text', { x: x0 + bw / 2, y: H - 12, fill: '#94a3b8', 'font-size': 9, 'text-anchor': 'middle' });
+        tx.textContent = labels[i]; svg.appendChild(tx);
+      }
+    }
+
+    // ---------------- Gauge ----------------
     function updateGauge(circleId, score, maxScore = 100, color = null) {
       const circle = document.getElementById(circleId);
       const radius = circle.r.baseVal.value;
       const circumference = 2 * Math.PI * radius;
-
       circle.style.strokeDasharray = `${circumference} ${circumference}`;
-      const offset = circumference - (score / maxScore) * circumference;
+      const offset = circumference - (Math.min(score, maxScore) / maxScore) * circumference;
       circle.style.strokeDashoffset = offset;
+      if (color) circle.style.stroke = color;
+    }
 
-      if (color) {
-        circle.style.stroke = color;
+    function recoveryFromHrv(hrv, rhr) {
+      const hrvScore = Math.min(100, Math.max(20, (hrv / 70) * 90));
+      const rhrScore = Math.min(100, Math.max(20, (60 / rhr) * 85));
+      return Math.round(hrvScore * 0.65 + rhrScore * 0.35);
+    }
+    function recCategory(score) {
+      if (score >= 67) return { cat: 'OPTIMAL', color: '#00e676' };
+      if (score >= 34) return { cat: 'MODERATE', color: '#ffea00' };
+      return { cat: 'LOW / REST', color: '#ff1744' };
+    }
+
+    // ---------------- Finalize / Overview ----------------
+    function finalize(statusMsg) {
+      hrvBaseline = DATA.hrv.length ? buildSeries(DATA.hrv, 'day', 'avg').filter(p => p.value != null).reduce((a, p) => a + p.value, 0) /
+        Math.max(1, buildSeries(DATA.hrv, 'day', 'avg').filter(p => p.value != null).length) : 0;
+      updateOverview();
+      renderActiveTab();
+      const days = new Set([...DATA.hrv, ...DATA.rhr, ...DATA.steps, ...DATA.sleep].map(r => r.date)).size;
+      document.getElementById('dataStats').textContent = days ? days + ' days of data · ' + new Date().toLocaleDateString() : 'No data loaded';
+      document.getElementById('uploadStatus').innerText = statusMsg || 'Ready';
+      hideLoader();
+    }
+
+    function updateOverview() {
+      const hrvLast = lastNonNull(buildSeries(DATA.hrv, 'day', 'avg'));
+      const rhrLast = lastNonNull(buildSeries(DATA.rhr, 'day', 'avg'));
+      const stepsLast = lastNonNull(buildSeries(DATA.steps, 'day', 'sum'));
+      const energyLast = lastNonNull(buildSeries(DATA.energy, 'day', 'sum'));
+      const sleepLast = latestSleep();
+
+      // Recovery
+      if (hrvLast && rhrLast) {
+        const rec = recoveryFromHrv(hrvLast.value, rhrLast.value);
+        const { cat, color } = recCategory(rec);
+        document.getElementById('recoveryScore').innerText = rec + '%';
+        document.getElementById('recoveryScore').style.color = color;
+        document.getElementById('recoveryCategory').innerText = cat;
+        document.getElementById('recoveryCategory').style.color = color;
+        updateGauge('recoveryCircle', rec, 100, color);
+        document.getElementById('hrvVal').innerText = Math.round(hrvLast.value) + ' ms';
+        document.getElementById('rhrVal').innerText = Math.round(rhrLast.value) + ' bpm';
+      } else {
+        document.getElementById('recoveryScore').innerText = '—';
+        document.getElementById('recoveryCategory').innerText = 'NO DATA';
+      }
+
+      // Strain
+      if (stepsLast) {
+        const strain = Math.min(21, 10 + stepsLast.value / 2000);
+        document.getElementById('strainScore').innerText = strain.toFixed(1);
+        updateGauge('strainCircle', strain, 21, '#29b6f6');
+        document.getElementById('stepsVal').innerText = Math.round(stepsLast.value).toLocaleString();
+      } else { document.getElementById('strainScore').innerText = '—'; document.getElementById('stepsVal').innerText = '—'; }
+      document.getElementById('calsVal').innerText = energyLast ? Math.round(energyLast.value).toLocaleString() + ' kcal' : '—';
+
+      // Sleep
+      if (sleepLast) {
+        const h = Math.floor(sleepLast.total), m = Math.round((sleepLast.total - h) * 60);
+        document.getElementById('sleepDuration').innerText = h + 'h ' + m + 'm';
+        const perf = Math.round((sleepLast.total / SLEEP_NEED_H) * 100);
+        const cat = perf >= 90 ? '≥90% OF NEED' : perf >= 75 ? '75-90% OF NEED' : '<75% OF NEED';
+        document.getElementById('sleepCat').innerText = cat;
+        const deep = sleepLast.deep, rem = sleepLast.rem, core = sleepLast.core, awake = sleepLast.awake;
+        const tot = sleepLast.total || 1;
+        const setW = (id, v) => document.getElementById(id).style.width = (v / tot * 100) + '%';
+        setW('ovDeep', deep); setW('ovRem', rem); setW('ovCore', core); setW('ovAwake', awake);
+        document.getElementById('ovDeepL').innerText = Math.round(deep / tot * 100) + '%';
+        document.getElementById('ovRemL').innerText = Math.round(rem / tot * 100) + '%';
+        document.getElementById('ovCoreL').innerText = Math.round(core / tot * 100) + '%';
+        document.getElementById('ovAwakeL').innerText = Math.round(awake / tot * 100) + '%';
+        const rest = deep + rem;
+        document.getElementById('ovRestorative').innerText = '✓ Restorative Sleep (Deep + REM): ' + Math.round(rest) + 'h (' + Math.round(rest / tot * 100) + '%)';
+      } else { document.getElementById('sleepDuration').innerText = '—'; document.getElementById('sleepCat').innerText = 'NO DATA'; }
+
+      // Vitals
+      const spo2Last = lastNonNull(buildSeries(DATA.spo2, 'day', 'avg'));
+      const respLast = lastNonNull(buildSeries(DATA.resp, 'day', 'avg'));
+      document.getElementById('vitalRHR').innerText = rhrLast ? Math.round(rhrLast.value) + ' bpm' : '—';
+      document.getElementById('vitalHRV').innerText = hrvLast ? Math.round(hrvLast.value) + ' ms' : '—';
+      document.getElementById('vitalSpO2').innerText = spo2Last ? spo2Last.value.toFixed(1) + '%' : '—';
+      document.getElementById('vitalResp').innerText = respLast ? respLast.value.toFixed(1) + ' rpm' : '—';
+      setStatus('vitalRHRs', rhrLast && rhrLast.value <= 60, rhrLast ? Math.round(rhrLast.value) + ' bpm' : '—');
+      setStatus('vitalHRVs', hrvLast && hrvLast.value >= 50, hrvLast ? '✓ ' + Math.round(hrvLast.value) + ' ms' : '—');
+      setStatus('vitalSpO2s', spo2Last && spo2Last.value >= 95, spo2Last ? '✓ ' + spo2Last.value.toFixed(1) + '%' : '—');
+      setStatus('vitalResps', respLast && respLast.value >= 12 && respLast.value <= 20, respLast ? '✓ ' + respLast.value.toFixed(1) + ' rpm' : '—');
+
+      generateInsights(hrvLast, rhrLast, sleepLast, spo2Last);
+
+      // Recovery detail header
+      if (hrvLast && rhrLast) {
+        const rec = recoveryFromHrv(hrvLast.value, rhrLast.value);
+        const { cat, color } = recCategory(rec);
+        document.getElementById('recBig').innerText = rec + '%';
+        document.getElementById('recBig').style.color = color;
+        document.getElementById('recSub').innerText = 'Recovery: ' + cat + ' · HRV ' + Math.round(hrvLast.value) + 'ms · RHR ' + Math.round(rhrLast.value) + 'bpm';
+      }
+      if (stepsLast) {
+        const strain = Math.min(21, 10 + stepsLast.value / 2000);
+        document.getElementById('strainBig').innerText = strain.toFixed(1);
+        document.getElementById('strainBig').style.color = '#29b6f6';
+      }
+      if (sleepLast) {
+        const h = Math.floor(sleepLast.total), m = Math.round((sleepLast.total - h) * 60);
+        document.getElementById('sleepBig').innerText = h + 'h ' + m + 'm';
+        document.getElementById('sleepBig').style.color = '#ab47bc';
       }
     }
 
-    // Initialize initial sample gauges
-    document.addEventListener('DOMContentLoaded', () => {
-      updateGauge('recoveryCircle', 86, 100, '#00e676');
-      updateGauge('strainCircle', 14.2, 21.0, '#29b6f6');
+    function setStatus(id, ok, text) {
+      const e = document.getElementById(id);
+      e.innerText = text;
+      e.className = 'vital-status ' + (ok ? 'status-ok' : 'status-warn');
+    }
+
+    function generateInsights(hrv, rhr, sleep, spo2) {
+      const container = document.getElementById('insightsList');
+      if (!hrv && !rhr && !sleep) { container.innerHTML = '<div class="no-data">Load your Apple Health export or sample data to generate insights.</div>'; return; }
+      let html = '';
+      const rec = (hrv && rhr) ? recoveryFromHrv(hrv.value, rhr.value) : null;
+      if (rec != null) {
+        if (rec >= 67) html += insight('good', '🟢', 'Strong Recovery (' + rec + '%)', 'HRV ' + Math.round(hrv.value) + 'ms and RHR ' + Math.round(rhr.value) + 'bpm. Your nervous system is primed for high strain.');
+        else html += insight('wrong', '🔴', 'Elevated Physical Stress (' + rec + '%)', 'HRV dipped to ' + Math.round(hrv.value) + 'ms with RHR at ' + Math.round(rhr.value) + 'bpm. Prioritize active recovery and hydration.');
+      }
+      if (sleep) {
+        const perf = Math.round((sleep.total / SLEEP_NEED_H) * 100);
+        const rest = Math.round((sleep.deep + sleep.rem) / (sleep.total || 1) * 100);
+        if (perf < 85) html += insight('wrong', '🔴', 'Sleep Debt', 'You hit ' + perf + '% of your optimal sleep need. Restorative (Deep+REM) was ' + rest + '%. Aim for an earlier bedtime.');
+        else html += insight('good', '🟢', 'Well-Rested', 'You reached ' + perf + '% of optimal sleep with ' + rest + '% restorative time. Solid recovery foundation.');
+      }
+      if (spo2 && spo2.value < 95) html += insight('wrong', '🔴', 'Low Blood Oxygen', 'SpO2 reading ' + spo2.value.toFixed(1) + '% is below the 95% healthy floor — worth monitoring.');
+      html += insight('info', '💡', 'Weekly Action Item', 'Keep bedtime within a 30-minute window and review the Recovery tab to spot HRV trends before hard workouts.');
+      container.innerHTML = html;
+
+      // Recovery tab insights
+      const ri = document.getElementById('recInsights');
+      if (ri) {
+        let rh = '';
+        if (hrv) rh += insight('info', '📈', 'HRV Baseline', 'Your 30-day HRV baseline is ' + (hrvBaseline ? Math.round(hrvBaseline) : '—') + 'ms. Values above baseline indicate readiness to train.');
+        if (rec != null) rh += insight(rec >= 67 ? 'good' : 'wrong', rec >= 67 ? '🟢' : '🔴', 'Recovery Readiness', 'Current recovery ' + rec + '%. ' + (rec >= 67 ? 'Push hard today.' : 'Favor moderate intensity.'));
+        ri.innerHTML = rh || '<div class="no-data">No data.</div>';
+      }
+    }
+    function insight(cls, icon, title, body) {
+      const color = cls === 'good' ? 'var(--recovery-green)' : cls === 'wrong' ? 'var(--recovery-red)' : 'var(--strain-blue)';
+      return `<div class="insight-card ${cls}"><div class="insight-icon">${icon}</div><div class="insight-content"><div class="insight-title" style="color:${color};">${title}</div><div class="insight-body">${body}</div></div></div>`;
+    }
+
+    // ---------------- Tab rendering ----------------
+    function renderActiveTab() {
+      if (currentTab === 'overview') return;
+      if (currentTab === 'recovery') {
+        lineChart(document.getElementById('hrvChart'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: '#00e676', unit: ' ms', baseline: hrvBaseline, round: true });
+        lineChart(document.getElementById('rhrChart'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: '#ff1744', unit: ' bpm', round: true });
+      } else if (currentTab === 'strain') {
+        lineChart(document.getElementById('stepsChart'), buildSeries(DATA.steps, currentGran, 'sum'), { color: '#29b6f6', unit: '', round: true });
+        lineChart(document.getElementById('energyChart'), buildSeries(DATA.energy, currentGran, 'sum'), { color: '#ffea00', unit: ' kcal', round: true });
+      } else if (currentTab === 'sleep') {
+        lineChart(document.getElementById('sleepTotalChart'), buildSleepTotal(currentGran), { color: '#ab47bc', unit: 'h', decimals: 1, baseline: SLEEP_NEED_H });
+        const s = buildSleepSeries(currentGran);
+        if (s) stackedBarChart(document.getElementById('sleepStageChart'), s.labels, s.stages);
+        else showNoData(document.getElementById('sleepStageChart'));
+      } else if (currentTab === 'vitals') {
+        lineChart(document.getElementById('vHrv'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: '#00e676', unit: ' ms', baseline: hrvBaseline, round: true });
+        lineChart(document.getElementById('vRhr'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: '#ff1744', unit: ' bpm', round: true });
+        lineChart(document.getElementById('vSpo2'), buildSeries(DATA.spo2, currentGran, 'avg'), { color: '#26c6da', unit: '%', decimals: 1 });
+        lineChart(document.getElementById('vResp'), buildSeries(DATA.resp, currentGran, 'avg'), { color: '#ffb74d', unit: ' rpm', decimals: 1 });
+      }
+    }
+    function buildSleepTotal(gran) {
+      const s = buildSleepSeries(gran);
+      if (!s) return [];
+      return s.labels.map((lab, i) => ({ label: lab, value: s.stages.core[i] + s.stages.deep[i] + s.stages.rem[i] + s.stages.unspec[i] }));
+    }
+
+    // Tab + range wiring
+    document.getElementById('tabs').addEventListener('click', e => {
+      const btn = e.target.closest('.tab'); if (!btn) return;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      currentTab = btn.dataset.tab;
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById('sec-' + currentTab).classList.add('active');
+      renderActiveTab();
+    });
+    document.getElementById('rangeToggle').addEventListener('click', e => {
+      const btn = e.target.closest('button'); if (!btn) return;
+      document.querySelectorAll('#rangeToggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentGran = btn.dataset.gran;
+      renderActiveTab();
     });
 
-    // Handle Drag and Drop
+    // ---------------- Loader ----------------
+    function showLoader(text) { document.getElementById('loaderText').innerText = text; document.getElementById('loader').style.display = 'flex'; }
+    function hideLoader() { document.getElementById('loader').style.display = 'none'; }
+
+    // ---------------- Upload ----------------
     const dropzone = document.getElementById('dropzone');
-    dropzone.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      dropzone.classList.add('dragover');
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault(); dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) processZipFile(e.dataTransfer.files[0]);
     });
-    dropzone.addEventListener('dragleave', () => {
-      dropzone.classList.remove('dragover');
-    });
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files.length > 0) {
-        processZipFile(e.dataTransfer.files[0]);
-      }
-    });
+    function handleFileSelect(event) { if (event.target.files.length > 0) processZipFile(event.target.files[0]); }
 
-    function handleFileSelect(event) {
-      if (event.target.files.length > 0) {
-        processZipFile(event.target.files[0]);
-      }
-    }
-
-    function showLoader(text) {
-      document.getElementById('loaderText').innerText = text;
-      document.getElementById('loader').style.display = 'flex';
-    }
-
-    function hideLoader() {
-      document.getElementById('loader').style.display = 'none';
-    }
-
-    // Parse zip file client-side
     async function processZipFile(file) {
       showLoader('Unzipping Apple Health export file...');
       document.getElementById('uploadStatus').innerText = `Processing: ${file.name}`;
-
       try {
         const zip = new JSZip();
         const zipContent = await zip.loadAsync(file);
-
         let xmlFile = zipContent.file("apple_health_export/export.xml") || zipContent.file("export.xml");
-
         if (!xmlFile) {
           const files = Object.keys(zipContent.files);
-          const foundXml = files.find(f => f.endsWith('.xml'));
-          if (foundXml) xmlFile = zipContent.file(foundXml);
+          const found = files.find(f => f.endsWith('.xml'));
+          if (found) xmlFile = zipContent.file(found);
         }
-
-        if (!xmlFile) {
-          alert('Could not find export.xml inside the zip file.');
-          hideLoader();
-          return;
-        }
-
+        if (!xmlFile) { alert('Could not find export.xml inside the zip file.'); hideLoader(); return; }
         showLoader('Extracting health metrics from export.xml...');
         const xmlText = await xmlFile.async("string");
-
         parseHealthXml(xmlText);
-
       } catch (err) {
         console.error(err);
         alert('Error reading zip file: ' + err.message);
@@ -762,118 +963,46 @@
       }
     }
 
-    function parseHealthXml(xmlString) {
-      showLoader('Calculating Recovery, Strain & Vitals scores...');
-
-      setTimeout(() => {
-        // Fast Regex Extractor for key metrics
-        const hrvMatches = [...xmlString.matchAll(/HKQuantityTypeIdentifierHeartRateVariabilitySDNN"[\s\S]*?value="([\d.]+)"/g)];
-        const rhrMatches = [...xmlString.matchAll(/HKQuantityTypeIdentifierRestingHeartRate"[\s\S]*?value="([\d.]+)"/g)];
-        const spO2Matches = [...xmlString.matchAll(/HKQuantityTypeIdentifierOxygenSaturation"[\s\S]*?value="([\d.]+)"/g)];
-        const respMatches = [...xmlString.matchAll(/HKQuantityTypeIdentifierRespiratoryRate"[\s\S]*?value="([\d.]+)"/g)];
-        const stepMatches = [...xmlString.matchAll(/HKQuantityTypeIdentifierStepCount"[\s\S]*?value="([\d.]+)"/g)];
-
-        const lastHrv = hrvMatches.length > 0 ? parseFloat(hrvMatches[hrvMatches.length - 1][1]) : 65;
-        const lastRhr = rhrMatches.length > 0 ? parseFloat(rhrMatches[rhrMatches.length - 1][1]) : 54;
-        const lastSpO2 = spO2Matches.length > 0 ? (parseFloat(spO2Matches[spO2Matches.length - 1][1]) * (parseFloat(spO2Matches[spO2Matches.length - 1][1]) < 1 ? 100 : 1)) : 98.5;
-        const lastResp = respMatches.length > 0 ? parseFloat(respMatches[respMatches.length - 1][1]) : 14.5;
-
-        let totalSteps = 0;
-        stepMatches.slice(-50).forEach(m => totalSteps += parseFloat(m[1]));
-        if (totalSteps === 0) totalSteps = 10450;
-
-        // Calculate Whoop Recovery Algorithm
-        const hrvScore = Math.min(100, Math.max(20, (lastHrv / 70) * 85));
-        const rhrScore = Math.min(100, Math.max(20, (60 / lastRhr) * 85));
-        const recoveryScore = Math.round((hrvScore * 0.6) + (rhrScore * 0.4));
-
-        let recColor = '#00e676';
-        let recCat = 'OPTIMAL';
-        if (recoveryScore < 34) { recColor = '#ff1744'; recCat = 'LOW / REST NEEDED'; }
-        else if (recoveryScore < 67) { recColor = '#ffea00'; recCat = 'MODERATE'; }
-
-        // Strain Calculation
-        const strainScore = Math.min(21.0, (10 + (totalSteps / 2000))).toFixed(1);
-
-        // Update UI
-        document.getElementById('recoveryScore').innerText = `${recoveryScore}%`;
-        document.getElementById('recoveryScore').style.color = recColor;
-        document.getElementById('recoveryCategory').innerText = recCat;
-        document.getElementById('recoveryCategory').style.color = recColor;
-        updateGauge('recoveryCircle', recoveryScore, 100, recColor);
-
-        document.getElementById('strainScore').innerText = strainScore;
-        updateGauge('strainCircle', strainScore, 21.0, '#29b6f6');
-
-        document.getElementById('hrvVal').innerText = `${Math.round(lastHrv)} ms`;
-        document.getElementById('rhrVal').innerText = `${Math.round(lastRhr)} bpm`;
-        document.getElementById('stepsVal').innerText = Math.round(totalSteps).toLocaleString();
-
-        document.getElementById('vitalRHR').innerText = `${Math.round(lastRhr)} bpm`;
-        document.getElementById('vitalHRV').innerText = `${Math.round(lastHrv)} ms`;
-        document.getElementById('vitalSpO2').innerText = `${lastSpO2.toFixed(1)}%`;
-        document.getElementById('vitalResp').innerText = `${lastResp.toFixed(1)} rpm`;
-
-        document.getElementById('uploadStatus').innerText = `✓ Successfully loaded export data!`;
-
-        generateInsights(recoveryScore, lastHrv, lastRhr, lastSpO2);
-
-        hideLoader();
-      }, 400);
-    }
-
-    function generateInsights(recovery, hrv, rhr, spO2) {
-      const container = document.getElementById('insightsList');
-      let html = '';
-
-      if (recovery >= 67) {
-        html += `
-          <div class="insight-card good">
-            <div class="insight-icon">🟢</div>
-            <div class="insight-content">
-              <div class="insight-title" style="color: var(--recovery-green);">Strong Recovery Signal (${recovery}%)</div>
-              <div class="insight-body">Your HRV is ${Math.round(hrv)}ms and Resting HR is ${Math.round(rhr)}bpm. Your body is primed for high strain and intense workouts.</div>
-            </div>
-          </div>
-        `;
-      } else {
-        html += `
-          <div class="insight-card wrong">
-            <div class="insight-icon">🔴</div>
-            <div class="insight-content">
-              <div class="insight-title" style="color: var(--recovery-red);">Elevated Physical Stress (${recovery}%)</div>
-              <div class="insight-body">HRV dipped to ${Math.round(hrv)}ms with RHR at ${Math.round(rhr)}bpm. Prioritize active recovery, hydration, and light activity.</div>
-            </div>
-          </div>
-        `;
-      }
-
-      html += `
-        <div class="insight-card info">
-          <div class="insight-icon">💡</div>
-          <div class="insight-content">
-            <div class="insight-title" style="color: var(--strain-blue);">Weekly Action Item</div>
-            <div class="insight-body">To maintain optimal restorative sleep, keep your bedtime consistent within a 30-minute window across the week.</div>
-          </div>
-        </div>
-      `;
-
-      container.innerHTML = html;
-    }
-
+    // ---------------- Sample Data ----------------
     function loadSampleData() {
-      showLoader('Loading sample Apple Health metrics...');
+      showLoader('Generating sample Apple Health metrics...');
       setTimeout(() => {
-        const sampleXml = `
-          <HKQuantityTypeIdentifierHeartRateVariabilitySDNN value="74.2"/>
-          <HKQuantityTypeIdentifierRestingHeartRate value="49"/>
-          <HKQuantityTypeIdentifierOxygenSaturation value="0.99"/>
-          <HKQuantityTypeIdentifierRespiratoryRate value="13.8"/>
-          <HKQuantityTypeIdentifierStepCount value="13200"/>
-        `;
-        parseHealthXml(sampleXml);
+        resetData();
+        const today = new Date();
+        function dateStr(offset) { const d = new Date(today); d.setDate(d.getDate() - offset); return d.toISOString().slice(0, 10); }
+        let hrv = 62, rhr = 52;
+        for (let i = 90; i >= 0; i--) {
+          const ds = dateStr(i);
+          hrv += (Math.random() - 0.5) * 6; hrv = Math.max(40, Math.min(95, hrv));
+          rhr += (Math.random() - 0.5) * 2; rhr = Math.max(44, Math.min(62, rhr));
+          DATA.hrv.push({ date: ds, value: Math.round(hrv * 10) / 10 });
+          DATA.rhr.push({ date: ds, value: Math.round(rhr * 10) / 10 });
+          const spo2 = 96 + Math.random() * 3;
+          DATA.spo2.push({ date: ds, value: Math.round(spo2 * 10) / 10 });
+          const resp = 13 + Math.random() * 3;
+          DATA.resp.push({ date: ds, value: Math.round(resp * 10) / 10 });
+          const steps = 5000 + Math.random() * 9000;
+          DATA.steps.push({ date: ds, value: Math.round(steps) });
+          DATA.energy.push({ date: ds, value: Math.round(steps * 0.045 + Math.random() * 100) });
+          // sleep: one night per day
+          const deep = 1 + Math.random() * 1.2;
+          const rem = 1.2 + Math.random() * 1;
+          const core = 2.5 + Math.random() * 1.5;
+          const awake = 0.2 + Math.random() * 0.6;
+          DATA.sleep.push({ date: ds, stage: 'deep', hours: deep });
+          DATA.sleep.push({ date: ds, stage: 'rem', hours: rem });
+          DATA.sleep.push({ date: ds, stage: 'core', hours: core });
+          DATA.sleep.push({ date: ds, stage: 'awake', hours: awake });
+        }
+        finalize('✓ Loaded 91 days of sample data');
       }, 500);
     }
+
+    // Init empty gauges
+    document.addEventListener('DOMContentLoaded', () => {
+      updateGauge('recoveryCircle', 0, 100, '#00e676');
+      updateGauge('strainCircle', 0, 21, '#29b6f6');
+    });
   </script>
 </body>
 </html>
