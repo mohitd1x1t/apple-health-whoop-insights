@@ -204,6 +204,22 @@
     }
     .spinner { width: 36px; height: 36px; border: 4px solid var(--card-border); border-top-color: var(--recovery-green); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Chart tooltip (glassmorphic) */
+    .chart-tooltip {
+      position: fixed; z-index: 9999; pointer-events: none;
+      background: rgba(20, 24, 36, 0.72); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px;
+      padding: 10px 12px; min-width: 130px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      font-size: 12px; color: var(--text-main);
+    }
+    .chart-tooltip .tooltip-label { font-weight: 700; font-size: 12px; margin-bottom: 6px; color: var(--text-main); }
+    .chart-tooltip .tooltip-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+    .chart-tooltip .tooltip-dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto; }
+    .chart-tooltip .tooltip-name { color: var(--text-muted); flex: 1 1 auto; }
+    .chart-tooltip .tooltip-value { font-weight: 700; color: var(--text-main); }
+    .btn-secondary { background: #202637; color: #fff; border: 1px solid var(--card-border); }
+    .btn-secondary:hover { background: #2a3248; }
   </style>
 </head>
 <body>
@@ -219,6 +235,8 @@
 
     <div class="header-actions">
       <span class="data-stats" id="dataStats">No data loaded</span>
+      <button class="btn" id="copyDigestBtn" onclick="copyWeeklyDigest()" style="display:none;">📋 Copy Weekly Digest</button>
+      <button class="btn btn-secondary" id="clearDataBtn" onclick="clearData()" style="display:none;">🗑 Clear Data</button>
       <button class="btn btn-primary" onclick="loadSampleData()">⚡ Load Sample Data</button>
     </div>
   </header>
@@ -505,6 +523,120 @@
     let currentTab = 'overview';
     let currentGran = 'day';
 
+    // ---------------- IndexedDB persistence ----------------
+    const IDB_NAME = 'vibepulse-db';
+    const IDB_STORE = 'healthData';
+    const IDB_KEY = 'historicalData';
+
+    function openIDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(IDB_NAME, 1);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function saveToIDB() {
+      try {
+        const db = await openIDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put({ data: DATA, savedAt: Date.now() }, IDB_KEY);
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+      } catch (e) { console.warn('IDB save failed', e); }
+    }
+    async function loadFromIDB() {
+      try {
+        const db = await openIDB();
+        const val = await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        db.close();
+        return val ? val.data : null;
+      } catch (e) { console.warn('IDB load failed', e); return null; }
+    }
+    async function clearIDB() {
+      try {
+        const db = await openIDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).delete(IDB_KEY);
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+      } catch (e) { console.warn('IDB clear failed', e); }
+    }
+
+    function setDataButtons(hasData) {
+      const d = hasData ? 'inline-flex' : 'none';
+      document.getElementById('clearDataBtn').style.display = d;
+      document.getElementById('copyDigestBtn').style.display = d;
+    }
+
+    async function clearData() {
+      if (!confirm('Clear all loaded health data from this device?')) return;
+      await clearIDB();
+      resetData();
+      updateOverview();
+      renderActiveTab();
+      document.getElementById('dataStats').innerText = 'No data loaded';
+      document.getElementById('uploadStatus').innerText = 'Ready for export.zip file';
+      setDataButtons(false);
+    }
+
+    function last7Days() {
+      const today = new Date(); const days = [];
+      for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); days.push(d.toISOString().slice(0, 10)); }
+      return days;
+    }
+    function buildWeeklyDigest() {
+      const days = last7Days();
+      const in7 = r => days.includes(r.date);
+      const hrvByDay = {}, rhrByDay = {};
+      DATA.hrv.filter(in7).forEach(r => hrvByDay[r.date] = r.value);
+      DATA.rhr.filter(in7).forEach(r => rhrByDay[r.date] = r.value);
+      const recVals = [];
+      Object.keys(hrvByDay).forEach(d => { if (rhrByDay[d] != null) recVals.push(recoveryFromHrv(hrvByDay[d], rhrByDay[d])); });
+      const sleepByDay = {};
+      DATA.sleep.filter(in7).forEach(s => { sleepByDay[s.date] = (sleepByDay[s.date] || 0) + s.hours; });
+      const sleepTotals = Object.values(sleepByDay);
+      const hrvVals = DATA.hrv.filter(in7).map(r => r.value);
+      const rhrVals = DATA.rhr.filter(in7).map(r => r.value);
+      const stepVals = DATA.steps.filter(in7).map(r => r.value);
+      const energyVals = DATA.energy.filter(in7).map(r => r.value);
+      const a = v => (v == null || isNaN(v)) ? 'n/a' : (Math.round(v * 10) / 10);
+      const parts = ['VibePulse: wk avg'];
+      if (recVals.length) parts.push('Recovery: ' + a(recVals.reduce((x, y) => x + y, 0) / recVals.length) + '%');
+      if (stepVals.length) parts.push('Strain: ' + a(stepVals.map(s => Math.min(21, 10 + s / 2000)).reduce((x, y) => x + y, 0) / stepVals.length));
+      if (sleepTotals.length) parts.push('Sleep: ' + a(sleepTotals.reduce((x, y) => x + y, 0) / sleepTotals.length) + 'h');
+      if (hrvVals.length) parts.push('HRV: ' + a(hrvVals.reduce((x, y) => x + y, 0) / hrvVals.length) + 'ms');
+      if (rhrVals.length) parts.push('RHR: ' + a(rhrVals.reduce((x, y) => x + y, 0) / rhrVals.length) + 'bpm');
+      if (stepVals.length) parts.push('Steps: ' + Math.round(stepVals.reduce((x, y) => x + y, 0) / stepVals.length));
+      if (energyVals.length) parts.push('Active: ' + Math.round(energyVals.reduce((x, y) => x + y, 0) / energyVals.length) + 'kcal');
+      return parts.join(' · ');
+    }
+    async function copyWeeklyDigest() {
+      const digest = buildWeeklyDigest();
+      if (!digest || digest === 'VibePulse: wk avg') { alert('No data available to build a weekly digest.'); return; }
+      try {
+        await navigator.clipboard.writeText(digest);
+        const btn = document.getElementById('copyDigestBtn');
+        const orig = btn.innerText; btn.innerText = '✓ Copied!';
+        setTimeout(() => { btn.innerText = orig; }, 1500);
+      } catch (e) {
+        prompt('Copy this weekly digest:', digest);
+      }
+    }
+
+
     function resetData() {
       DATA = { hrv: [], rhr: [], spo2: [], resp: [], steps: [], energy: [], sleep: [] };
       hrvBaseline = 0;
@@ -641,6 +773,38 @@
     function el(tag, attrs) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
     function showNoData(svg, msg) { svg.innerHTML = ''; const t = el('text', { x: 300, y: 130, fill: '#94a3b8', 'font-size': 13, 'text-anchor': 'middle' }); t.textContent = msg || 'No data available'; svg.appendChild(t); }
 
+    // ---------------- Chart tooltips (glassmorphic) ----------------
+    const CHART_NAMES = {
+      hrvChart: 'HRV (SDNN) ms', rhrChart: 'Resting HR bpm', stepsChart: 'Steps',
+      energyChart: 'Active Energy kcal', sleepTotalChart: 'Total Sleep h',
+      vHrv: 'HRV (SDNN) ms', vRhr: 'Resting HR bpm', vSpo2: 'SpO2 %', vResp: 'Respiratory Rate rpm'
+    };
+    function ensureTooltipEl() {
+      let tt = document.getElementById('chartTooltip');
+      if (!tt) {
+        tt = document.createElement('div'); tt.id = 'chartTooltip'; tt.className = 'chart-tooltip';
+        tt.style.display = 'none'; document.body.appendChild(tt);
+      }
+      return tt;
+    }
+    function showChartTooltip(point, clientX, clientY) {
+      const tt = ensureTooltipEl(); tt.innerHTML = '';
+      const lbl = document.createElement('div'); lbl.className = 'tooltip-label'; lbl.textContent = point.label;
+      tt.appendChild(lbl);
+      (point.rows || []).forEach(r => {
+        const row = document.createElement('div'); row.className = 'tooltip-row';
+        const dot = document.createElement('span'); dot.className = 'tooltip-dot'; dot.style.background = r.color;
+        const name = document.createElement('span'); name.className = 'tooltip-name'; name.textContent = r.name;
+        const val = document.createElement('span'); val.className = 'tooltip-value'; val.textContent = r.value;
+        row.appendChild(dot); row.appendChild(name); row.appendChild(val); tt.appendChild(row);
+      });
+      tt.style.display = 'block';
+      tt.style.left = (clientX + 14) + 'px'; tt.style.top = (clientY + 14) + 'px';
+    }
+    function hideChartTooltip() {
+      const tt = document.getElementById('chartTooltip'); if (tt) tt.style.display = 'none';
+    }
+
     function lineChart(svg, points, opts = {}) {
       svg.innerHTML = '';
       if (!points.length) { showNoData(svg); return; }
@@ -682,6 +846,28 @@
         svg.insertBefore(el('path', { d: ap, fill: color, opacity: 0.12 }), svg.firstChild);
         seg.forEach(i => svg.appendChild(el('circle', { cx: x(i), cy: y(points[i].value), r: 2.4, fill: color })));
       });
+      // Interactive tooltip layer
+      const cross = el('line', { x1: 0, y1: padT, x2: 0, y2: padT + plotH, stroke: color, 'stroke-width': 1, 'stroke-dasharray': '4 4', opacity: 0 });
+      const hi = el('circle', { cx: 0, cy: 0, r: 5, fill: color, stroke: '#0b0e14', 'stroke-width': 2, opacity: 0 });
+      svg.appendChild(cross); svg.appendChild(hi);
+      const overlay = el('rect', { x: padL, y: padT, width: plotW, height: plotH, fill: 'transparent' });
+      overlay.style.cursor = 'crosshair';
+      overlay.addEventListener('pointermove', (ev) => {
+        const rect = svg.getBoundingClientRect();
+        if (!rect.width) { hideChartTooltip(); return; }
+        const sx = (ev.clientX - rect.left) / rect.width * W;
+        let nearest = 0, best = Infinity;
+        for (let i = 0; i < n; i++) { const d = Math.abs(x(i) - sx); if (d < best) { best = d; nearest = i; } }
+        const p = points[nearest];
+        if (p.value == null) { hideChartTooltip(); cross.setAttribute('opacity', 0); hi.setAttribute('opacity', 0); return; }
+        cross.setAttribute('x1', x(nearest)); cross.setAttribute('x2', x(nearest)); cross.setAttribute('opacity', 0.5);
+        hi.setAttribute('cx', x(nearest)); hi.setAttribute('cy', y(p.value)); hi.setAttribute('opacity', 1);
+        const vtxt = (opts.round ? Math.round(p.value) : p.value.toFixed(opts.decimals != null ? opts.decimals : 1)) + (opts.unit || '');
+        showChartTooltip({ label: p.label, rows: [{ name: opts.name || CHART_NAMES[svg.id] || 'Value', value: vtxt, color }] }, ev.clientX, ev.clientY);
+      });
+      overlay.addEventListener('pointerleave', () => { hideChartTooltip(); cross.setAttribute('opacity', 0); hi.setAttribute('opacity', 0); });
+      svg.appendChild(overlay);
+
       const step = Math.ceil(n / 7);
       for (let i = 0; i < n; i += step) {
         const tx = el('text', { x: x(i), y: H - 12, fill: '#94a3b8', 'font-size': 9, 'text-anchor': 'middle' });
@@ -721,6 +907,24 @@
         const tx = el('text', { x: x0 + bw / 2, y: H - 12, fill: '#94a3b8', 'font-size': 9, 'text-anchor': 'middle' });
         tx.textContent = labels[i]; svg.appendChild(tx);
       }
+      // Interactive tooltip layer
+      const bOverlay = el('rect', { x: padL, y: padT, width: plotW, height: plotH, fill: 'transparent' });
+      bOverlay.style.cursor = 'pointer';
+      const stageNames = { deep: 'Deep', rem: 'REM', core: 'Core', unspec: 'Unspecified', awake: 'Awake' };
+      bOverlay.addEventListener('pointermove', (ev) => {
+        const rect = svg.getBoundingClientRect();
+        if (!rect.width) { hideChartTooltip(); return; }
+        const sx = (ev.clientX - rect.left) / rect.width * W;
+        let i = Math.floor((sx - padL) / slot);
+        if (i < 0) i = 0; if (i >= n) i = n - 1;
+        const rows = [];
+        order.forEach(st => { const v = stages[st][i]; if (v > 0.01) rows.push({ name: stageNames[st], value: v.toFixed(1) + 'h', color: colors[st] }); });
+        if (!rows.length) { hideChartTooltip(); return; }
+        showChartTooltip({ label: labels[i], rows }, ev.clientX, ev.clientY);
+      });
+      bOverlay.addEventListener('pointerleave', () => hideChartTooltip());
+      svg.appendChild(bOverlay);
+
     }
 
     // ---------------- Gauge ----------------
@@ -754,6 +958,9 @@
       const days = new Set([...DATA.hrv, ...DATA.rhr, ...DATA.steps, ...DATA.sleep].map(r => r.date)).size;
       document.getElementById('dataStats').textContent = days ? days + ' days of data · ' + new Date().toLocaleDateString() : 'No data loaded';
       document.getElementById('uploadStatus').innerText = statusMsg || 'Ready';
+      const hasData = DATA.hrv.length || DATA.rhr.length || DATA.steps.length || DATA.sleep.length || DATA.spo2.length || DATA.resp.length || DATA.energy.length;
+      setDataButtons(hasData);
+      if (hasData) saveToIDB();
       hideLoader();
     }
 
@@ -911,6 +1118,7 @@
     // Tab + range wiring
     document.getElementById('tabs').addEventListener('click', e => {
       const btn = e.target.closest('.tab'); if (!btn) return;
+      hideChartTooltip();
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       btn.classList.add('active');
       currentTab = btn.dataset.tab;
@@ -920,6 +1128,7 @@
     });
     document.getElementById('rangeToggle').addEventListener('click', e => {
       const btn = e.target.closest('button'); if (!btn) return;
+      hideChartTooltip();
       document.querySelectorAll('#rangeToggle button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentGran = btn.dataset.gran;
@@ -999,9 +1208,18 @@
     }
 
     // Init empty gauges
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       updateGauge('recoveryCircle', 0, 100, '#00e676');
       updateGauge('strainCircle', 0, 21, '#29b6f6');
+      try {
+        const saved = await loadFromIDB();
+        const ok = saved && (saved.hrv && saved.hrv.length || saved.sleep && saved.sleep.length ||
+          saved.steps && saved.steps.length || saved.rhr && saved.rhr.length);
+        if (ok) {
+          DATA = saved;
+          finalize('✓ Loaded saved data from this device');
+        }
+      } catch (e) { console.warn('auto-load failed', e); }
     });
   </script>
 </body>
