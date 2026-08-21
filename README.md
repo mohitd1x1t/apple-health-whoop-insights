@@ -8,11 +8,13 @@
 
 ## 🌟 Features
 
-- **Recovery Score** — HRV + RHR derived gauge (green/yellow/red zones)
+- **Recovery Score** — readiness scored against *your own* rolling baseline, not a fixed scale (see below)
 - **Day Strain** — Steps → 0–21 scale with active calorie & step breakdown
 - **Sleep Performance** — Duration vs 8h 15m optimal, sleep-stage bar (Deep/REM/Core/Awake)
 - **Health Monitor Vitals** — Latest RHR, HRV, SpO₂, Respiratory Rate with status indicators
 - **Interactive Charts** — HRV, RHR, Steps, Energy, Sleep trends with glassmorphic tooltips
+- **HRV Baseline Band** — trailing 30-day mean plus a shaded ±1 SD deviation band
+- **Compare Previous** — one toggle overlays the preceding window of equal length on every line chart
 - **Weekly Digest** — One-click copy of 7-day averages (Recovery, Strain, Sleep, HRV, RHR, Steps, Active kcal)
 - **Tabbed Dashboard** — Overview / Recovery / Strain / Sleep / Vitals
 - **Time Granularity** — Daily / Weekly / Monthly aggregation
@@ -20,6 +22,52 @@
 - **Local Persistence** — Data auto-saves to IndexedDB; reloads instantly on revisit
 - **Clear Data** — One-click wipe of all local data
 - **PWA Ready** — Installable, offline-capable, neon pulse icon
+
+---
+
+## 🧠 How the Recovery Score Works
+
+The score is **relative to your own baseline**, not an absolute scale. Recovery only means anything
+compared to *your* normal — a 45 ms HRV baseline is not "unrecovered," it's just your number — so
+each input is scored as a deviation (in standard deviations) from your own trailing 30 days:
+
+| Input | Weight | Direction |
+|-------|--------|-----------|
+| HRV vs your baseline | 50% | Higher is better |
+| Resting HR vs your baseline | 25% | **Lower** is better |
+| Sleep quality (65% duration + 35% Deep+REM share) | 15% | Higher is better |
+| Yesterday's strain vs your baseline | 10% | **Lower** is better (load is a debt) |
+
+Each deviation is clamped to ±2 SD, combined into a weighted mean, and mapped as
+`50 + 25 × z`, clamped to 1–99. So **50% means "right at your own baseline."**
+
+Two consequences worth knowing:
+
+- **Missing inputs are treated as unknown, not zero.** If your export has no sleep data, the sleep
+  weight is redistributed across the inputs you *do* have rather than scoring you as if you hadn't
+  slept.
+- **Cold start.** Until 14 days of HRV history exist, there's no trustworthy baseline, so the app
+  falls back to an absolute HRV/RHR formula and says so in the Recovery tab.
+
+The Recovery tab shows which inputs drove today's number (e.g. *HRV +1.2 SD · RHR −0.4 SD*) so the
+score is explainable rather than a bare percentage.
+
+---
+
+## ⇄ Comparative Overlay
+
+The **“⇄ Compare previous”** toggle overlays the preceding window of equal length on every line
+chart — dashed and faded, sharing the y-scale so the two are actually comparable:
+
+| Granularity | Compares |
+|-------------|----------|
+| Daily | Last 7 days vs the 7 before |
+| Weekly | Last 4 weeks vs the 4 before |
+| Monthly | Last 3 months vs the 3 before |
+
+Hovering shows both values with the previous bucket's own date. The sleep-stage stacked bars are
+deliberately excluded — two overlaid stacked series are unreadable, so that chart keeps showing the
+full range.
 
 ---
 
@@ -94,7 +142,7 @@ npx serve .        # or: python3 -m http.server 8080
 apple-health-whoop-insights/
 ├── index.html        # Single-file app (HTML + CSS + JS)
 ├── manifest.json     # PWA manifest (local SVG icon)
-├── sw.js             # Service worker (caches app + icon)
+├── sw.js             # Service worker (network-first HTML, cache-first assets)
 ├── icon.svg          # Animated neon pulse icon (maskable)
 └── README.md         # This file
 ```
@@ -109,6 +157,9 @@ apple-health-whoop-insights/
 | **Strain** | `StepCount`, `ActiveEnergyBurned` |
 | **Sleep** | `SleepAnalysis` (Deep, REM, Core, Awake, Unspecified) |
 | **Vitals** | `OxygenSaturation`, `RespiratoryRate` |
+
+> `OxygenSaturation` is normalised whether your export stores it as a fraction (`0.97`) or a
+> percentage (`97`).
 
 > Missing a type? Open an issue or PR — parsing is a single `INTEREST` set.
 
@@ -131,10 +182,11 @@ Click **“⚡ Load Sample Data”** to generate 90 days of realistic synthetic 
 Click **“📋 Copy Weekly Digest”** → clipboard receives:
 
 ```
-VibePulse: wk avg · Recovery: 72% · Strain: 13.2 · Sleep: 7.4h · HRV: 58.3ms · RHR: 51.2bpm · Steps: 8421 · Active: 412kcal
+VibePulse: wk avg · Recovery: 54% · Strain: 13.2 · Sleep: 7.4h · HRV: 58.3ms · RHR: 51.2bpm · Steps: 8421 · Active: 412kcal
 ```
 
-Paste into Notion, Obsidian, Messages, or your training log.
+Paste into Notion, Obsidian, Messages, or your training log. Recovery here is the average of the
+same baseline-relative daily scores the dashboard shows, so ~50% is a normal week, not a bad one.
 
 ---
 

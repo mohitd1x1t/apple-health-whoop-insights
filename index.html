@@ -105,6 +105,7 @@
     .tab:hover { border-color: rgba(255, 255, 255, .2); color: var(--text-main); }
     .tab.active { background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; border: none; }
 
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
     .range-toggle { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
     .range-toggle button {
       background: #202637; border: 1px solid var(--card-border); color: var(--text-muted);
@@ -262,10 +263,15 @@
     <button class="tab" data-tab="vitals">Vitals</button>
   </nav>
 
-  <div class="range-toggle" id="rangeToggle">
-    <button data-gran="day" class="active">Daily</button>
-    <button data-gran="week">Weekly</button>
-    <button data-gran="month">Monthly</button>
+  <div class="toolbar">
+    <div class="range-toggle" id="rangeToggle">
+      <button data-gran="day" class="active">Daily</button>
+      <button data-gran="week">Weekly</button>
+      <button data-gran="month">Monthly</button>
+    </div>
+    <div class="range-toggle" id="compareToggle">
+      <button id="compareBtn" title="Overlay the preceding window of equal length on every line chart">⇄ Compare previous</button>
+    </div>
   </div>
 
   <!-- ===================== OVERVIEW ===================== -->
@@ -416,7 +422,7 @@
     </div>
     <div class="chart-card">
       <h3>HRV (SDNN) Trend</h3>
-      <div class="chart-sub" id="hrvSub">Your nervous-system recovery signal vs 30-day baseline.</div>
+      <div class="chart-sub" id="hrvSub">Your nervous-system recovery signal vs 30-day baseline (shaded band = ±1 SD of that baseline).</div>
       <svg class="chart" id="hrvChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
     </div>
     <div class="chart-card">
@@ -461,7 +467,7 @@
     </div>
     <div class="chart-card">
       <h3>Sleep Stage Composition</h3>
-      <div class="chart-sub">Deep, REM, Core and Awake minutes per period (parsed from your export).</div>
+      <div class="chart-sub" id="sleepStageSub">Deep, REM, Core and Awake minutes per period (parsed from your export).</div>
       <svg class="chart" id="sleepStageChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="legend-row">
         <div class="legend-item"><div class="legend-dot" style="background:#5e35b1"></div>Deep</div>
@@ -520,8 +526,10 @@
     // ---------------- Data model ----------------
     let DATA = { hrv: [], rhr: [], spo2: [], resp: [], steps: [], energy: [], sleep: [] };
     let hrvBaseline = 0;
+    let hrvBaselineSD = 0;
     let currentTab = 'overview';
     let currentGran = 'day';
+    let compareOn = false;
 
     // ---------------- IndexedDB persistence ----------------
     const IDB_NAME = 'vibepulse-db';
@@ -594,17 +602,16 @@
 
     function last7Days() {
       const today = new Date(); const days = [];
-      for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); days.push(d.toISOString().slice(0, 10)); }
+      for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); days.push(ymd(d)); }
       return days;
     }
     function buildWeeklyDigest() {
       const days = last7Days();
       const in7 = r => days.includes(r.date);
-      const hrvByDay = {}, rhrByDay = {};
-      DATA.hrv.filter(in7).forEach(r => hrvByDay[r.date] = r.value);
-      DATA.rhr.filter(in7).forEach(r => rhrByDay[r.date] = r.value);
       const recVals = [];
-      Object.keys(hrvByDay).forEach(d => { if (rhrByDay[d] != null) recVals.push(recoveryFromHrv(hrvByDay[d], rhrByDay[d])); });
+      // Read the pre-computed baseline-relative scores rather than re-deriving them, so the
+      // digest can never disagree with what the dashboard shows.
+      days.forEach(d => { if (RECOVERY[d]) recVals.push(RECOVERY[d].score); });
       const sleepByDay = {};
       DATA.sleep.filter(in7).forEach(s => { sleepByDay[s.date] = (sleepByDay[s.date] || 0) + s.hours; });
       const sleepTotals = Object.values(sleepByDay);
@@ -615,7 +622,7 @@
       const a = v => (v == null || isNaN(v)) ? 'n/a' : (Math.round(v * 10) / 10);
       const parts = ['VibePulse: wk avg'];
       if (recVals.length) parts.push('Recovery: ' + a(recVals.reduce((x, y) => x + y, 0) / recVals.length) + '%');
-      if (stepVals.length) parts.push('Strain: ' + a(stepVals.map(s => Math.min(21, 10 + s / 2000)).reduce((x, y) => x + y, 0) / stepVals.length));
+      if (stepVals.length) parts.push('Strain: ' + a(stepVals.map(strainFromSteps).reduce((x, y) => x + y, 0) / stepVals.length));
       if (sleepTotals.length) parts.push('Sleep: ' + a(sleepTotals.reduce((x, y) => x + y, 0) / sleepTotals.length) + 'h');
       if (hrvVals.length) parts.push('HRV: ' + a(hrvVals.reduce((x, y) => x + y, 0) / hrvVals.length) + 'ms');
       if (rhrVals.length) parts.push('RHR: ' + a(rhrVals.reduce((x, y) => x + y, 0) / rhrVals.length) + 'bpm');
@@ -640,6 +647,8 @@
     function resetData() {
       DATA = { hrv: [], rhr: [], spo2: [], resp: [], steps: [], energy: [], sleep: [] };
       hrvBaseline = 0;
+      hrvBaselineSD = 0;
+      RECOVERY = {};
     }
 
     function sleepStage(v) {
@@ -682,6 +691,7 @@
             if (type === 'HKQuantityTypeIdentifierOxygenSaturation') v = v < 1 ? v * 100 : v;
             if (type === 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN') DATA.hrv.push({ date, value: v });
             else if (type === 'HKQuantityTypeIdentifierRestingHeartRate') DATA.rhr.push({ date, value: v });
+            else if (type === 'HKQuantityTypeIdentifierOxygenSaturation') DATA.spo2.push({ date, value: v });
             else if (type === 'HKQuantityTypeIdentifierRespiratoryRate') DATA.resp.push({ date, value: v });
             else if (type === 'HKQuantityTypeIdentifierStepCount') DATA.steps.push({ date, value: v });
             else if (type === 'HKQuantityTypeIdentifierActiveEnergyBurned') DATA.energy.push({ date, value: v });
@@ -694,10 +704,16 @@
     }
 
     // ---------------- Aggregation ----------------
+    // Bucket keys must be built from LOCAL date parts. `toISOString()` on a local-midnight Date
+    // shifts the calendar day in any non-UTC zone (e.g. UTC+5:30 → previous day), which silently
+    // dropped the most recent day/week/month from every chart and put the monthly view a month off.
+    function ymd(d) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
     function bucketKey(dateStr, gran) {
       if (gran === 'day') return dateStr;
       const d = new Date(dateStr + 'T00:00:00');
-      if (gran === 'week') { const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day); return d.toISOString().slice(0, 10); }
+      if (gran === 'week') { const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day); return ymd(d); }
       if (gran === 'month') return dateStr.slice(0, 7);
     }
     function rangeBuckets(min, max, gran) {
@@ -706,12 +722,12 @@
       const end = new Date(max + 'T00:00:00');
       if (gran === 'month') {
         d = new Date(d.getFullYear(), d.getMonth(), 1); end.setDate(1);
-        while (d <= end) { keys.push(d.toISOString().slice(0, 7)); d.setMonth(d.getMonth() + 1); }
+        while (d <= end) { keys.push(ymd(d).slice(0, 7)); d.setMonth(d.getMonth() + 1); }
       } else if (gran === 'week') {
         const day = (d.getDay() + 6) % 7; d.setDate(d.getDate() - day);
-        while (d <= end) { keys.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 7); }
+        while (d <= end) { keys.push(ymd(d)); d.setDate(d.getDate() + 7); }
       } else {
-        while (d <= end) { keys.push(d.toISOString().slice(0, 10)); d.setDate(d.getDate() + 1); }
+        while (d <= end) { keys.push(ymd(d)); d.setDate(d.getDate() + 1); }
       }
       return keys;
     }
@@ -807,19 +823,33 @@
 
     function lineChart(svg, points, opts = {}) {
       svg.innerHTML = '';
+      renderChartLegend(svg, []); // clear first, so the early "no data" returns can't strand one
       if (!points.length) { showNoData(svg); return; }
       const W = 600, H = 260, padL = 46, padR = 16, padT = 16, padB = 34;
       const plotW = W - padL - padR, plotH = H - padT - padB;
+      const prev = opts.compare ? opts.compare.points : null;
       const vals = points.map(p => p.value).filter(v => v != null);
       if (!vals.length) { showNoData(svg); return; }
-      let min = opts.min != null ? opts.min : Math.min(...vals);
-      let max = opts.max != null ? opts.max : Math.max(...vals);
+      // Scale over BOTH series, otherwise the two windows aren't comparable.
+      const scaleVals = prev ? vals.concat(prev.map(p => p.value).filter(v => v != null)) : vals;
+      let min = opts.min != null ? opts.min : Math.min(...scaleVals);
+      let max = opts.max != null ? opts.max : Math.max(...scaleVals);
       if (min === max) { max = min + 1; }
       const range = max - min; min -= range * 0.12; max += range * 0.12;
       const n = points.length;
       const x = i => padL + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
       const y = v => padT + plotH - ((v - min) / (max - min)) * plotH;
+      const yc = v => Math.min(padT + plotH, Math.max(padT, y(v)));
       const color = opts.color || '#00e676';
+      const fmt = v => (opts.round ? Math.round(v) : v.toFixed(opts.decimals != null ? opts.decimals : 1)) + (opts.unit || '');
+
+      // ±1 SD band behind everything, clamped to the plot so an out-of-range band can't overflow.
+      if (opts.band && opts.band.lo != null && opts.band.hi != null && opts.band.hi > opts.band.lo) {
+        const yTop = yc(opts.band.hi), yBot = yc(opts.band.lo);
+        if (yBot > yTop) {
+          svg.appendChild(el('rect', { x: padL, y: yTop, width: plotW, height: yBot - yTop, fill: '#ffea00', opacity: 0.07 }));
+        }
+      }
 
       for (let t = 0; t <= 4; t++) {
         const v = min + (max - min) * (t / 4), yy = y(v);
@@ -832,13 +862,29 @@
         const by = y(opts.baseline);
         svg.appendChild(el('line', { x1: padL, y1: by, x2: W - padR, y2: by, stroke: '#ffea00', 'stroke-width': 1.2, 'stroke-dasharray': '5 4', opacity: 0.7 }));
       }
+      // Split a series into null-free runs of indices so gaps stay gaps.
+      const runs = (arr) => {
+        const segs = []; let cur = [];
+        arr.forEach((p, i) => { if (p.value == null) { if (cur.length) segs.push(cur); cur = []; } else cur.push(i); });
+        if (cur.length) segs.push(cur);
+        return segs;
+      };
+      // Previous window first, so it sits behind the current line. Dashed and faded, with no
+      // area fill or dots — the fill is what makes two overlaid series unreadable.
+      if (prev) {
+        runs(prev).forEach(seg => {
+          let path = ''; seg.forEach((i, k) => { path += (k === 0 ? 'M' : 'L') + x(i) + ' ' + y(prev[i].value) + ' '; });
+          svg.appendChild(el('path', {
+            d: path, fill: 'none', stroke: color, 'stroke-width': 2, 'stroke-dasharray': '5 4',
+            opacity: 0.45, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'data-series': 'previous'
+          }));
+        });
+      }
       // segments (skip nulls)
-      const segs = []; let cur = [];
-      points.forEach((p, i) => { if (p.value == null) { if (cur.length) segs.push(cur); cur = []; } else cur.push(i); });
-      if (cur.length) segs.push(cur);
+      const segs = runs(points);
       segs.forEach(seg => {
         let path = ''; seg.forEach((i, k) => { path += (k === 0 ? 'M' : 'L') + x(i) + ' ' + y(points[i].value) + ' '; });
-        svg.appendChild(el('path', { d: path, fill: 'none', stroke: color, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+        svg.appendChild(el('path', { d: path, fill: 'none', stroke: color, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'data-series': 'current' }));
         const first = seg[0], last = seg[seg.length - 1];
         let ap = 'M' + x(first) + ' ' + y(points[first].value) + ' ';
         seg.forEach(i => { ap += 'L' + x(i) + ' ' + y(points[i].value) + ' '; });
@@ -862,8 +908,18 @@
         if (p.value == null) { hideChartTooltip(); cross.setAttribute('opacity', 0); hi.setAttribute('opacity', 0); return; }
         cross.setAttribute('x1', x(nearest)); cross.setAttribute('x2', x(nearest)); cross.setAttribute('opacity', 0.5);
         hi.setAttribute('cx', x(nearest)); hi.setAttribute('cy', y(p.value)); hi.setAttribute('opacity', 1);
-        const vtxt = (opts.round ? Math.round(p.value) : p.value.toFixed(opts.decimals != null ? opts.decimals : 1)) + (opts.unit || '');
-        showChartTooltip({ label: p.label, rows: [{ name: opts.name || CHART_NAMES[svg.id] || 'Value', value: vtxt, color }] }, ev.clientX, ev.clientY);
+        const label = opts.name || CHART_NAMES[svg.id] || 'Value';
+        const rows = [{ name: label, value: fmt(p.value), color }];
+        if (prev) {
+          const q = prev[nearest];
+          // The previous bucket carries its own label so "06/13 vs 06/06" is legible.
+          rows.push({
+            name: (q && q.label ? q.label : 'Previous'),
+            value: (q && q.value != null) ? fmt(q.value) : 'n/a',
+            color: 'rgba(255,255,255,0.35)'
+          });
+        }
+        showChartTooltip({ label: p.label, rows }, ev.clientX, ev.clientY);
       });
       overlay.addEventListener('pointerleave', () => { hideChartTooltip(); cross.setAttribute('opacity', 0); hi.setAttribute('opacity', 0); });
       svg.appendChild(overlay);
@@ -873,6 +929,38 @@
         const tx = el('text', { x: x(i), y: H - 12, fill: '#94a3b8', 'font-size': 9, 'text-anchor': 'middle' });
         tx.textContent = points[i].label; svg.appendChild(tx);
       }
+
+      const legend = [];
+      if (prev) {
+        legend.push({ name: opts.compare.currentName || 'Current', color });
+        legend.push({ name: opts.compare.name || 'Previous', color, dashed: true });
+      }
+      if (opts.band && opts.band.lo != null) legend.push({ name: 'Baseline ±1 SD', color: '#ffea00' });
+      renderChartLegend(svg, legend);
+    }
+
+    // The legend lives as a sibling of the <svg> so it can reuse the existing .legend-row styles.
+    // Rebuilt on every render (and removed when there's nothing to explain) so it can't go stale.
+    function renderChartLegend(svg, items) {
+      if (!svg.id) return;
+      const id = svg.id + 'Legend';
+      const existing = document.getElementById(id);
+      if (existing) existing.remove();
+      if (!items.length || !svg.parentNode) return;
+      const row = document.createElement('div');
+      row.className = 'legend-row'; row.id = id;
+      items.forEach(it => {
+        const item = document.createElement('div'); item.className = 'legend-item';
+        const dot = document.createElement('div'); dot.className = 'legend-dot';
+        if (it.dashed) {
+          dot.style.cssText = 'width:14px;height:0;border-radius:0;border-top:2px dashed ' + it.color + ';opacity:0.6';
+        } else {
+          dot.style.background = it.color;
+        }
+        item.appendChild(dot); item.appendChild(document.createTextNode(it.name));
+        row.appendChild(item);
+      });
+      svg.parentNode.insertBefore(row, svg.nextSibling);
     }
 
     function stackedBarChart(svg, labels, stages) {
@@ -949,10 +1037,122 @@
       return { cat: 'LOW / REST', color: '#ff1744' };
     }
 
+    // ---------------- Recovery readiness model ----------------
+    // Recovery is only meaningful relative to YOUR normal, so every input is scored as a
+    // deviation from the user's own trailing baseline rather than an absolute anchor.
+    const BASELINE_WINDOW = 30;   // days of history used for baseline mean/SD
+    const MIN_BASELINE_DAYS = 14; // below this we can't trust a baseline; fall back to absolute
+    const REC_WEIGHTS = { hrv: 0.50, rhr: 0.25, sleep: 0.15, strain: 0.10 };
+    let RECOVERY = {};
+
+    function strainFromSteps(steps) { return Math.min(21, 10 + steps / 2000); }
+    function clamp(v, lo, hi) { return Math.min(hi, Math.max(lo, v)); }
+
+    function meanSD(arr) {
+      if (!arr.length) return null;
+      const mean = arr.reduce((a, b) => a + b, 0) / arr.length;
+      const variance = arr.reduce((a, b) => a + (b - mean) * (b - mean), 0) / arr.length;
+      return { mean, sd: Math.sqrt(variance), n: arr.length };
+    }
+
+    // Sleep quality on a 0..1 scale: mostly duration, partly restorative (Deep+REM) share.
+    function sleepScore01(s) {
+      if (!s || !s.total) return null;
+      const duration = Math.min(1, s.total / SLEEP_NEED_H);
+      const restorative = Math.min(1, ((s.deep + s.rem) / s.total) / 0.45);
+      return 0.65 * duration + 0.35 * restorative;
+    }
+
+    // Walks the day timeline once, carrying trailing-window baselines, and scores every day.
+    function buildRecoveryIndex() {
+      RECOVERY = {};
+      const byDay = (rows, agg) => {
+        const m = {};
+        rows.forEach(r => { if (!m[r.date]) m[r.date] = []; m[r.date].push(r.value); });
+        const out = {};
+        Object.keys(m).forEach(d => {
+          out[d] = agg === 'sum' ? m[d].reduce((a, b) => a + b, 0) : m[d].reduce((a, b) => a + b, 0) / m[d].length;
+        });
+        return out;
+      };
+      const hrvByDay = byDay(DATA.hrv, 'avg');
+      const rhrByDay = byDay(DATA.rhr, 'avg');
+      const stepsByDay = byDay(DATA.steps, 'sum');
+      const sleepByDay = {};
+      DATA.sleep.forEach(s => {
+        if (!sleepByDay[s.date]) sleepByDay[s.date] = { core: 0, deep: 0, rem: 0, unspec: 0, awake: 0 };
+        sleepByDay[s.date][s.stage] += s.hours;
+      });
+      Object.values(sleepByDay).forEach(o => { o.total = o.core + o.deep + o.rem + o.unspec; });
+
+      const days = [...new Set([...Object.keys(hrvByDay), ...Object.keys(rhrByDay), ...Object.keys(stepsByDay), ...Object.keys(sleepByDay)])].sort();
+      const prevDayOf = {};
+      days.forEach((d, i) => { if (i > 0) prevDayOf[d] = days[i - 1]; });
+
+      // Trailing history buffers, strictly PRIOR to the day being scored.
+      const hist = { hrv: [], rhr: [], strain: [] };
+      const pushTrail = (key, v) => { if (v == null) return; hist[key].push(v); if (hist[key].length > BASELINE_WINDOW) hist[key].shift(); };
+
+      days.forEach(d => {
+        const hrv = hrvByDay[d], rhr = rhrByDay[d];
+        const hrvStats = meanSD(hist.hrv), rhrStats = meanSD(hist.rhr), strainStats = meanSD(hist.strain);
+        const parts = {}, terms = [];
+        const addTerm = (name, dev) => {
+          if (dev == null || !isFinite(dev)) return;
+          const c = clamp(dev, -2, 2);
+          parts[name] = c;
+          terms.push({ w: REC_WEIGHTS[name], dev: c });
+        };
+
+        const haveBaseline = hrvStats && hrvStats.n >= MIN_BASELINE_DAYS && hrvStats.sd > 0 && hrv != null;
+        if (haveBaseline) {
+          addTerm('hrv', (hrv - hrvStats.mean) / hrvStats.sd);
+          if (rhr != null && rhrStats && rhrStats.sd > 0) addTerm('rhr', (rhrStats.mean - rhr) / rhrStats.sd);
+          const sq = sleepScore01(sleepByDay[d]);
+          if (sq != null) addTerm('sleep', (sq - 0.80) / 0.20);
+          const prevSteps = stepsByDay[prevDayOf[d]];
+          if (prevSteps != null && strainStats && strainStats.sd > 0) {
+            addTerm('strain', -(strainFromSteps(prevSteps) - strainStats.mean) / strainStats.sd);
+          }
+        }
+
+        if (terms.length) {
+          // Renormalise over the terms actually present, so a missing input is treated as
+          // "unknown" rather than silently scored as zero.
+          const wSum = terms.reduce((a, t) => a + t.w, 0);
+          const z = terms.reduce((a, t) => a + t.w * t.dev, 0) / wSum;
+          RECOVERY[d] = { score: clamp(Math.round(50 + 25 * z), 1, 99), mode: 'baseline', parts };
+        } else if (hrv != null && rhr != null) {
+          RECOVERY[d] = { score: recoveryFromHrv(hrv, rhr), mode: 'absolute', parts: {} };
+        }
+
+        pushTrail('hrv', hrv);
+        pushTrail('rhr', rhr);
+        if (stepsByDay[d] != null) pushTrail('strain', strainFromSteps(stepsByDay[d]));
+      });
+    }
+
+    function latestRecovery() {
+      const keys = Object.keys(RECOVERY).sort();
+      return keys.length ? { date: keys[keys.length - 1], ...RECOVERY[keys[keys.length - 1]] } : null;
+    }
+    // Human-readable explanation of which inputs drove a score.
+    function recoveryDrivers(parts) {
+      const names = { hrv: 'HRV', rhr: 'RHR', sleep: 'Sleep', strain: "Yesterday's strain" };
+      return Object.keys(parts).map(k =>
+        names[k] + ' ' + (parts[k] >= 0 ? '+' : '') + parts[k].toFixed(1) + ' SD'
+      ).join(' · ');
+    }
+
     // ---------------- Finalize / Overview ----------------
     function finalize(statusMsg) {
-      hrvBaseline = DATA.hrv.length ? buildSeries(DATA.hrv, 'day', 'avg').filter(p => p.value != null).reduce((a, p) => a + p.value, 0) /
-        Math.max(1, buildSeries(DATA.hrv, 'day', 'avg').filter(p => p.value != null).length) : 0;
+      // True trailing 30-day baseline (this used to average the whole dataset while the UI
+      // called it a 30-day baseline). SD is kept for the ±1 SD deviation bands.
+      const hrvDays = buildSeries(DATA.hrv, 'day', 'avg').filter(p => p.value != null).map(p => p.value);
+      const hrvStats = meanSD(hrvDays.slice(-BASELINE_WINDOW));
+      hrvBaseline = hrvStats ? hrvStats.mean : 0;
+      hrvBaselineSD = hrvStats ? hrvStats.sd : 0;
+      buildRecoveryIndex();
       updateOverview();
       renderActiveTab();
       const days = new Set([...DATA.hrv, ...DATA.rhr, ...DATA.steps, ...DATA.sleep].map(r => r.date)).size;
@@ -971,17 +1171,18 @@
       const energyLast = lastNonNull(buildSeries(DATA.energy, 'day', 'sum'));
       const sleepLast = latestSleep();
 
-      // Recovery
-      if (hrvLast && rhrLast) {
-        const rec = recoveryFromHrv(hrvLast.value, rhrLast.value);
+      // Recovery — baseline-relative score from the index, with the absolute formula as fallback
+      const recNow = latestRecovery();
+      if (recNow) {
+        const rec = recNow.score;
         const { cat, color } = recCategory(rec);
         document.getElementById('recoveryScore').innerText = rec + '%';
         document.getElementById('recoveryScore').style.color = color;
         document.getElementById('recoveryCategory').innerText = cat;
         document.getElementById('recoveryCategory').style.color = color;
         updateGauge('recoveryCircle', rec, 100, color);
-        document.getElementById('hrvVal').innerText = Math.round(hrvLast.value) + ' ms';
-        document.getElementById('rhrVal').innerText = Math.round(rhrLast.value) + ' bpm';
+        document.getElementById('hrvVal').innerText = hrvLast ? Math.round(hrvLast.value) + ' ms' : '—';
+        document.getElementById('rhrVal').innerText = rhrLast ? Math.round(rhrLast.value) + ' bpm' : '—';
       } else {
         document.getElementById('recoveryScore').innerText = '—';
         document.getElementById('recoveryCategory').innerText = 'NO DATA';
@@ -989,7 +1190,7 @@
 
       // Strain
       if (stepsLast) {
-        const strain = Math.min(21, 10 + stepsLast.value / 2000);
+        const strain = strainFromSteps(stepsLast.value);
         document.getElementById('strainScore').innerText = strain.toFixed(1);
         updateGauge('strainCircle', strain, 21, '#29b6f6');
         document.getElementById('stepsVal').innerText = Math.round(stepsLast.value).toLocaleString();
@@ -1027,18 +1228,22 @@
       setStatus('vitalSpO2s', spo2Last && spo2Last.value >= 95, spo2Last ? '✓ ' + spo2Last.value.toFixed(1) + '%' : '—');
       setStatus('vitalResps', respLast && respLast.value >= 12 && respLast.value <= 20, respLast ? '✓ ' + respLast.value.toFixed(1) + ' rpm' : '—');
 
-      generateInsights(hrvLast, rhrLast, sleepLast, spo2Last);
+      generateInsights(hrvLast, rhrLast, sleepLast, spo2Last, recNow);
 
       // Recovery detail header
-      if (hrvLast && rhrLast) {
-        const rec = recoveryFromHrv(hrvLast.value, rhrLast.value);
+      if (recNow) {
+        const rec = recNow.score;
         const { cat, color } = recCategory(rec);
         document.getElementById('recBig').innerText = rec + '%';
         document.getElementById('recBig').style.color = color;
-        document.getElementById('recSub').innerText = 'Recovery: ' + cat + ' · HRV ' + Math.round(hrvLast.value) + 'ms · RHR ' + Math.round(rhrLast.value) + 'bpm';
+        const bits = ['Recovery: ' + cat];
+        if (hrvLast) bits.push('HRV ' + Math.round(hrvLast.value) + 'ms');
+        if (rhrLast) bits.push('RHR ' + Math.round(rhrLast.value) + 'bpm');
+        bits.push(recNow.mode === 'baseline' ? 'vs your own baseline' : 'absolute scale (building baseline)');
+        document.getElementById('recSub').innerText = bits.join(' · ');
       }
       if (stepsLast) {
-        const strain = Math.min(21, 10 + stepsLast.value / 2000);
+        const strain = strainFromSteps(stepsLast.value);
         document.getElementById('strainBig').innerText = strain.toFixed(1);
         document.getElementById('strainBig').style.color = '#29b6f6';
       }
@@ -1055,14 +1260,18 @@
       e.className = 'vital-status ' + (ok ? 'status-ok' : 'status-warn');
     }
 
-    function generateInsights(hrv, rhr, sleep, spo2) {
+    function generateInsights(hrv, rhr, sleep, spo2, recNow) {
       const container = document.getElementById('insightsList');
       if (!hrv && !rhr && !sleep) { container.innerHTML = '<div class="no-data">Load your Apple Health export or sample data to generate insights.</div>'; return; }
       let html = '';
-      const rec = (hrv && rhr) ? recoveryFromHrv(hrv.value, rhr.value) : null;
+      const rec = recNow ? recNow.score : null;
       if (rec != null) {
-        if (rec >= 67) html += insight('good', '🟢', 'Strong Recovery (' + rec + '%)', 'HRV ' + Math.round(hrv.value) + 'ms and RHR ' + Math.round(rhr.value) + 'bpm. Your nervous system is primed for high strain.');
-        else html += insight('wrong', '🔴', 'Elevated Physical Stress (' + rec + '%)', 'HRV dipped to ' + Math.round(hrv.value) + 'ms with RHR at ' + Math.round(rhr.value) + 'bpm. Prioritize active recovery and hydration.');
+        const vitals = [hrv ? 'HRV ' + Math.round(hrv.value) + 'ms' : null, rhr ? 'RHR ' + Math.round(rhr.value) + 'bpm' : null].filter(Boolean).join(' and ');
+        // Three-way, matching recCategory. Under a baseline-relative model ~50% is a normal day,
+        // so a binary good/bad split would flag most days as a problem.
+        if (rec >= 67) html += insight('good', '🟢', 'Strong Recovery (' + rec + '%)', vitals + '. Your nervous system is primed for high strain.');
+        else if (rec >= 34) html += insight('info', '🟡', 'Baseline Recovery (' + rec + '%)', vitals + '. You are around your own normal — train as planned, but leave headroom.');
+        else html += insight('wrong', '🔴', 'Elevated Physical Stress (' + rec + '%)', vitals + '. Prioritize active recovery and hydration.');
       }
       if (sleep) {
         const perf = Math.round((sleep.total / SLEEP_NEED_H) * 100);
@@ -1078,8 +1287,20 @@
       const ri = document.getElementById('recInsights');
       if (ri) {
         let rh = '';
-        if (hrv) rh += insight('info', '📈', 'HRV Baseline', 'Your 30-day HRV baseline is ' + (hrvBaseline ? Math.round(hrvBaseline) : '—') + 'ms. Values above baseline indicate readiness to train.');
-        if (rec != null) rh += insight(rec >= 67 ? 'good' : 'wrong', rec >= 67 ? '🟢' : '🔴', 'Recovery Readiness', 'Current recovery ' + rec + '%. ' + (rec >= 67 ? 'Push hard today.' : 'Favor moderate intensity.'));
+        if (hrv) {
+          const sdTxt = hrvBaselineSD ? ' (±1 SD ≈ ' + Math.round(hrvBaselineSD) + 'ms, shaded on the chart)' : '';
+          rh += insight('info', '📈', 'HRV Baseline', 'Your 30-day HRV baseline is ' + (hrvBaseline ? Math.round(hrvBaseline) : '—') + 'ms' + sdTxt + '. Values above baseline indicate readiness to train.');
+        }
+        if (rec != null) {
+          const drivers = recNow.mode === 'baseline' ? recoveryDrivers(recNow.parts) : '';
+          const advice = rec >= 67 ? 'Push hard today.' : rec >= 34 ? 'Train as planned.' : 'Favor moderate intensity.';
+          const body = 'Current recovery ' + rec + '%. ' + advice +
+            (drivers ? ' Driven by: ' + drivers + ' (deviation from your own 30-day baseline).'
+                     : ' Not enough history for a personal baseline yet — using an absolute scale until ' + MIN_BASELINE_DAYS + ' days of HRV are available.');
+          const cls = rec >= 67 ? 'good' : rec >= 34 ? 'info' : 'wrong';
+          const icon = rec >= 67 ? '🟢' : rec >= 34 ? '🟡' : '🔴';
+          rh += insight(cls, icon, 'Recovery Readiness', body);
+        }
         ri.innerHTML = rh || '<div class="no-data">No data.</div>';
       }
     }
@@ -1089,24 +1310,57 @@
     }
 
     // ---------------- Tab rendering ----------------
+    // Windows used by the compare overlay: enough buckets to see a trend at each granularity.
+    const COMPARE_WINDOW = { day: 7, week: 4, month: 3 };
+
+    // Splits a series into "most recent window" + "the window right before it", aligned by
+    // position. The previous window is front-padded with nulls when history is short, so both
+    // arrays are the same length and index i means the same offset in both.
+    function comparePair(series, gran) {
+      const n = COMPARE_WINDOW[gran] || 7;
+      if (series.length <= n) return null; // nothing earlier to compare against
+      const cur = series.slice(-n);
+      let prev = series.slice(Math.max(0, series.length - 2 * n), series.length - n);
+      if (!prev.some(p => p.value != null)) return null; // all-empty history: don't promise a series we can't draw
+      while (prev.length < n) prev.unshift({ label: '—', value: null });
+      return { cur, prev };
+    }
+
+    // Wraps a lineChart call so compare mode transparently swaps in the windowed series.
+    function drawLine(svg, series, opts) {
+      if (!compareOn) { lineChart(svg, series, opts); return; }
+      const pair = comparePair(series, currentGran);
+      if (!pair) { lineChart(svg, series, opts); return; }
+      lineChart(svg, pair.cur, Object.assign({}, opts, {
+        compare: { points: pair.prev, name: 'Previous ' + pair.prev.length, currentName: 'Latest ' + pair.cur.length }
+      }));
+    }
+
     function renderActiveTab() {
+      const hrvBand = hrvBaselineSD ? { lo: hrvBaseline - hrvBaselineSD, hi: hrvBaseline + hrvBaselineSD } : null;
       if (currentTab === 'overview') return;
       if (currentTab === 'recovery') {
-        lineChart(document.getElementById('hrvChart'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: '#00e676', unit: ' ms', baseline: hrvBaseline, round: true });
-        lineChart(document.getElementById('rhrChart'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: '#ff1744', unit: ' bpm', round: true });
+        drawLine(document.getElementById('hrvChart'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: '#00e676', unit: ' ms', baseline: hrvBaseline, band: hrvBand, round: true });
+        drawLine(document.getElementById('rhrChart'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: '#ff1744', unit: ' bpm', round: true });
       } else if (currentTab === 'strain') {
-        lineChart(document.getElementById('stepsChart'), buildSeries(DATA.steps, currentGran, 'sum'), { color: '#29b6f6', unit: '', round: true });
-        lineChart(document.getElementById('energyChart'), buildSeries(DATA.energy, currentGran, 'sum'), { color: '#ffea00', unit: ' kcal', round: true });
+        drawLine(document.getElementById('stepsChart'), buildSeries(DATA.steps, currentGran, 'sum'), { color: '#29b6f6', unit: '', round: true });
+        drawLine(document.getElementById('energyChart'), buildSeries(DATA.energy, currentGran, 'sum'), { color: '#ffea00', unit: ' kcal', round: true });
       } else if (currentTab === 'sleep') {
-        lineChart(document.getElementById('sleepTotalChart'), buildSleepTotal(currentGran), { color: '#ab47bc', unit: 'h', decimals: 1, baseline: SLEEP_NEED_H });
+        drawLine(document.getElementById('sleepTotalChart'), buildSleepTotal(currentGran), { color: '#ab47bc', unit: 'h', decimals: 1, baseline: SLEEP_NEED_H });
+        // Stage breakdown is deliberately never overlaid — two stacked-bar series are unreadable.
         const s = buildSleepSeries(currentGran);
+        const stageSub = document.getElementById('sleepStageSub');
+        if (stageSub) {
+          stageSub.textContent = 'Deep, REM, Core and Awake minutes per period (parsed from your export).' +
+            (compareOn ? ' Compare mode does not apply here — stacked bars can\'t be legibly overlaid, so this shows the full range.' : '');
+        }
         if (s) stackedBarChart(document.getElementById('sleepStageChart'), s.labels, s.stages);
         else showNoData(document.getElementById('sleepStageChart'));
       } else if (currentTab === 'vitals') {
-        lineChart(document.getElementById('vHrv'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: '#00e676', unit: ' ms', baseline: hrvBaseline, round: true });
-        lineChart(document.getElementById('vRhr'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: '#ff1744', unit: ' bpm', round: true });
-        lineChart(document.getElementById('vSpo2'), buildSeries(DATA.spo2, currentGran, 'avg'), { color: '#26c6da', unit: '%', decimals: 1 });
-        lineChart(document.getElementById('vResp'), buildSeries(DATA.resp, currentGran, 'avg'), { color: '#ffb74d', unit: ' rpm', decimals: 1 });
+        drawLine(document.getElementById('vHrv'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: '#00e676', unit: ' ms', baseline: hrvBaseline, band: hrvBand, round: true });
+        drawLine(document.getElementById('vRhr'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: '#ff1744', unit: ' bpm', round: true });
+        drawLine(document.getElementById('vSpo2'), buildSeries(DATA.spo2, currentGran, 'avg'), { color: '#26c6da', unit: '%', decimals: 1 });
+        drawLine(document.getElementById('vResp'), buildSeries(DATA.resp, currentGran, 'avg'), { color: '#ffb74d', unit: ' rpm', decimals: 1 });
       }
     }
     function buildSleepTotal(gran) {
@@ -1132,6 +1386,12 @@
       document.querySelectorAll('#rangeToggle button').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentGran = btn.dataset.gran;
+      renderActiveTab();
+    });
+    document.getElementById('compareBtn').addEventListener('click', e => {
+      hideChartTooltip();
+      compareOn = !compareOn;
+      e.currentTarget.classList.toggle('active', compareOn);
       renderActiveTab();
     });
 
@@ -1178,7 +1438,7 @@
       setTimeout(() => {
         resetData();
         const today = new Date();
-        function dateStr(offset) { const d = new Date(today); d.setDate(d.getDate() - offset); return d.toISOString().slice(0, 10); }
+        function dateStr(offset) { const d = new Date(today); d.setDate(d.getDate() - offset); return ymd(d); }
         let hrv = 62, rhr = 52;
         for (let i = 90; i >= 0; i--) {
           const ds = dateStr(i);
