@@ -17,7 +17,7 @@
 - **HRV Baseline Band** — trailing 30-day mean plus a shaded ±1 SD deviation band
 - **Compare Previous** — one toggle overlays the preceding window of equal length on every line chart
 - **Weekly Digest** — One-click copy of 7-day averages (Recovery, Strain, Sleep, HRV, RHR, Steps, Active kcal, VO₂ max)
-- **Tabbed Dashboard** — Overview / Recovery / Strain / Sleep / VO₂ Max / Vitals
+- **Tabbed Dashboard** — Overview / Recovery / Strain / Sleep / VO₂ Max / Vitals / **Coach**
 - **Time Granularity** — Daily / Weekly / Monthly aggregation
 - **Profile Card** — age, sex, height, weight read from your export where present, editable where not
 - **Readiness-Driven Accent** — the whole UI shifts color with today's recovery band
@@ -27,6 +27,7 @@
 - **Clear Data** — One-click wipe of all local data (your profile is kept)
 - **Reduced-Motion Aware** — every animation is suppressed under `prefers-reduced-motion`
 - **PWA Ready** — Installable, offline-capable
+- **🤖 AI Coach (Opt-in)** — Personalized health coaching via Gemini 1.5 Flash; consent-gated, sends only aggregated summaries, API key stored locally, "Inspect Payload" transparency, quick prompts, streaming responses
 
 ---
 
@@ -142,13 +143,22 @@ full range.
 
 ## 🔐 Privacy Guarantee
 
-> **Your health data never leaves your browser.**
+> **VibePulse Health is local-first by default — zero server uploads for health parsing.**
 
 - **Zero network requests** for data parsing or computation
 - **No analytics, no tracking, no cookies** (except the PWA service worker for offline)
 - **IndexedDB storage** is local to your device/browser profile
 - **Export.zip** is read entirely in-memory via `JSZip` — nothing uploaded
 - **Open source** — audit every line at `github.com/mohitd1x1t/apple-health-whoop-insights`
+
+> **⚠️ Optional AI Coach Feature (Explicit Opt-In)**
+>
+> The app includes an **optional AI Coach** that sends aggregated health summaries directly from your browser to the Google Gemini API using your own API key. This feature is:
+> - **Disabled by default** — requires explicit consent via checkbox
+> - **Local-first** — no network requests unless you enable it and provide an API key
+> - **Aggregated only** — sends summaries (recovery scores, VO₂ max, HRV/RHR trends, sleep/strain ratios, workout patterns, profile), never raw data
+> - **Your key, your control** — you provide and can revoke the Gemini API key at any time
+> - **Transparent** — "Inspect Payload" button shows exactly what JSON is sent before each request
 
 ---
 

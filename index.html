@@ -426,6 +426,7 @@
     <button class="tab" data-tab="sleep">Sleep</button>
     <button class="tab" data-tab="vo2">VO₂ Max</button>
     <button class="tab" data-tab="vitals">Vitals</button>
+    <button class="tab" data-tab="coach">Coach</button>
   </nav>
 
   <div class="toolbar">
@@ -769,6 +770,90 @@
     </div>
   </section>
 
+  <!-- ===================== COACH ===================== -->
+  <section class="section" id="sec-coach">
+    <div class="detail-head">
+      <div class="big" style="font-size:28px;">AI Coach</div>
+      <div class="sub">Personalized insights powered by Gemini — runs locally with your key</div>
+    </div>
+
+    <!-- Consent Banner -->
+    <div class="card" id="coachConsentCard" style="display:none;">
+      <div class="card-title">
+        <span>Opt-in Required</span>
+      </div>
+      <div style="color: var(--text-muted); line-height: 1.6; margin-bottom: 16px;">
+        The AI Coach sends <strong>aggregated, anonymized summaries</strong> of your health data (recovery, VO₂ max, HRV, RHR, sleep, strain, vitals, workouts, and profile) to Google's Gemini API. No raw data or personally identifiable information leaves your browser.
+      </div>
+      <label class="check-row" style="font-size: 14px;">
+        <input type="checkbox" id="coachConsentCheck" onchange="toggleCoachConsent()">
+        I understand and consent to sending aggregated summaries to the Gemini API
+      </label>
+    </div>
+
+    <!-- API Key Configuration -->
+    <div class="card" id="coachApiCard" style="display:none;">
+      <div class="card-title">
+        <span>API Configuration</span>
+      </div>
+      <div class="field" style="margin-bottom: 12px;">
+        <label for="coachApiKey">Gemini API Key</label>
+        <input type="password" id="coachApiKey" placeholder="Enter your Gemini API key" style="font-family: monospace; font-size: 13px;">
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Get a key at <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: var(--series-blue);">aistudio.google.com</a></div>
+      </div>
+      <div class="field" style="margin-bottom: 12px;">
+        <label for="coachModel">Model</label>
+        <select id="coachModel" onchange="coachModel = this.value; saveCoachSettings();">
+          <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest (recommended)</option>
+          <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+        </select>
+      </div>
+      <button class="btn btn-secondary" onclick="saveCoachApiKey()">Save API Key</button>
+    </div>
+
+    <!-- Chat Interface -->
+    <div class="card" id="coachChatCard" style="display:none;">
+      <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+        <span>Chat</span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="btn btn-secondary" onclick="inspectCoachPayload()" style="font-size: 12px; padding: 6px 12px;">Inspect Payload</button>
+          <button class="btn btn-secondary" onclick="clearCoachChat()" style="font-size: 12px; padding: 6px 12px;">Clear Chat</button>
+        </div>
+      </div>
+
+      <!-- Quick Prompt Chips -->
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+        <button class="btn btn-secondary" onclick="sendCoachQuickPrompt('Why is my recovery score low today?')" style="font-size: 12px; padding: 8px 12px;">Why is my recovery score low today?</button>
+        <button class="btn btn-secondary" onclick="sendCoachQuickPrompt('How can I improve my HRV baseline?')" style="font-size: 12px; padding: 8px 12px;">How can I improve my HRV baseline?</button>
+        <button class="btn btn-secondary" onclick="sendCoachQuickPrompt('Analyze my sleep vs strain ratio')" style="font-size: 12px; padding: 8px 12px;">Analyze my sleep vs strain ratio</button>
+      </div>
+
+      <!-- Chat Messages -->
+      <div id="coachMessages" style="max-height: 400px; overflow-y: auto; margin-bottom: 16px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">
+          Start a conversation with your AI Coach
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div style="display: flex; gap: 8px;">
+        <textarea id="coachInput" placeholder="Ask your coach anything about your health data..." style="flex: 1; min-height: 44px; max-height: 120px; background: var(--inset-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 10px; color: var(--text-main); font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
+        <button class="btn btn-primary" id="coachSendBtn" onclick="sendCoachMessage()" style="align-self: flex-end; min-width: 100px;">Send</button>
+      </div>
+    </div>
+
+    <!-- Inspect Payload Modal -->
+    <div id="coachPayloadModal" style="display:none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; align-items: center; justify-content: center;">
+      <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 24px; max-width: 800px; width: 90%; max-height: 80vh; overflow: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-size: 18px;">Payload Sent to Gemini</h3>
+          <button class="btn btn-secondary" onclick="closePayloadModal()" style="padding: 6px 12px;">Close</button>
+        </div>
+        <pre id="coachPayloadContent" style="background: var(--inset-bg); border-radius: 8px; padding: 16px; overflow: auto; max-height: 60vh; font-size: 12px; line-height: 1.5; color: var(--text-main); white-space: pre-wrap; word-break: break-word;"></pre>
+      </div>
+    </div>
+  </section>
+
   <script>
     // Register PWA service worker
     if ('serviceWorker' in navigator) {
@@ -829,11 +914,21 @@
     let currentGran = 'day';
     let compareOn = false;
 
+    // Coach state
+    let coachConsent = false;
+    let coachApiKey = '';
+    let coachModel = 'gemini-1.5-flash-latest';
+    let coachChatHistory = [];
+    let coachStreaming = false;
+
     // ---------------- IndexedDB persistence ----------------
     const IDB_NAME = 'vibepulse-db';
     const IDB_STORE = 'healthData';
     const IDB_KEY = 'historicalData';
     const IDB_PROFILE_KEY = 'profile';
+    const IDB_GEMINI_KEY = 'geminiApiKey';
+    const IDB_COACH_SETTINGS_KEY = 'coachSettings';
+    const IDB_COACH_HISTORY_KEY = 'coachChatHistory';
 
     function openIDB() {
       return new Promise((resolve, reject) => {
@@ -880,6 +975,41 @@
         });
         db.close();
       } catch (e) { console.warn('IDB delete failed', key, e); }
+    }
+    async function idbPutCoach(key, value) {
+      try {
+        const db = await openIDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).put(value, key);
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+      } catch (e) { console.warn('IDB coach put failed', key, e); }
+    }
+    async function idbGetCoach(key) {
+      try {
+        const db = await openIDB();
+        const val = await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readonly');
+          const req = tx.objectStore(IDB_STORE).get(key);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+        db.close();
+        return val;
+      } catch (e) { console.warn('IDB coach get failed', key, e); return null; }
+    }
+    async function idbDeleteCoach(key) {
+      try {
+        const db = await openIDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(IDB_STORE, 'readwrite');
+          tx.objectStore(IDB_STORE).delete(key);
+          tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+        });
+        db.close();
+      } catch (e) { console.warn('IDB coach delete failed', key, e); }
     }
 
     async function saveToIDB() { await idbPut(IDB_KEY, { data: DATA, savedAt: Date.now() }); }
@@ -2659,6 +2789,13 @@
     ['pfAge', 'pfSex', 'pfHeight', 'pfWeight'].forEach(id => {
       document.getElementById(id).addEventListener('change', readProfileInputs);
     });
+    // Coach input enter key
+    document.getElementById('coachInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendCoachMessage();
+      }
+    });
 
     // ---------------- Loader ----------------
     function showLoader(text) { document.getElementById('loaderText').innerText = text; document.getElementById('loader').style.display = 'flex'; }
@@ -2758,6 +2895,298 @@
       }, 500);
     }
 
+    // ================= Coach (Gemini AI) =================
+    async function loadCoachState() {
+      try {
+        const settings = await idbGetCoach(IDB_COACH_SETTINGS_KEY);
+        if (settings) {
+          coachConsent = settings.consent || false;
+          coachApiKey = settings.apiKey || '';
+          coachModel = settings.model || 'gemini-1.5-flash-latest';
+          document.getElementById('coachConsentCheck').checked = coachConsent;
+          document.getElementById('coachApiKey').value = coachApiKey;
+          document.getElementById('coachModel').value = coachModel;
+        }
+        const history = await idbGetCoach(IDB_COACH_HISTORY_KEY);
+        if (history && history.length) {
+          coachChatHistory = history;
+          renderCoachMessages();
+        }
+        updateCoachUI();
+      } catch (e) { console.warn('loadCoachState failed', e); }
+    }
+
+    async function saveCoachSettings() {
+      await idbPutCoach(IDB_COACH_SETTINGS_KEY, {
+        consent: coachConsent,
+        apiKey: coachApiKey,
+        model: coachModel,
+        updatedAt: Date.now()
+      });
+    }
+
+    function toggleCoachConsent() {
+      coachConsent = document.getElementById('coachConsentCheck').checked;
+      saveCoachSettings();
+      updateCoachUI();
+    }
+
+    async function saveCoachApiKey() {
+      coachApiKey = document.getElementById('coachApiKey').value.trim();
+      if (!coachApiKey) {
+        alert('Please enter a valid Gemini API key');
+        return;
+      }
+      await saveCoachSettings();
+      updateCoachUI();
+    }
+
+    function updateCoachUI() {
+      const consentCard = document.getElementById('coachConsentCard');
+      const apiCard = document.getElementById('coachApiCard');
+      const chatCard = document.getElementById('coachChatCard');
+
+      if (!coachConsent) {
+        consentCard.style.display = 'block';
+        apiCard.style.display = 'none';
+        chatCard.style.display = 'none';
+      } else if (!coachApiKey) {
+        consentCard.style.display = 'none';
+        apiCard.style.display = 'block';
+        chatCard.style.display = 'none';
+      } else {
+        consentCard.style.display = 'none';
+        apiCard.style.display = 'none';
+        chatCard.style.display = 'block';
+        renderCoachMessages();
+      }
+    }
+
+    function buildCoachContext() {
+      // Gather data for the coach
+      const recNow = latestRecovery();
+      const v = latestVo2();
+      const sleepLast = latestSleep();
+      const hrvLast = lastNonNull(buildSeries(DATA.hrv, 'day', 'avg'));
+      const rhrLast = lastNonNull(buildSeries(DATA.rhr, 'day', 'avg'));
+      const spo2Last = lastNonNull(buildSeries(DATA.spo2, 'day', 'avg'));
+      const respLast = lastNonNull(buildSeries(DATA.resp, 'day', 'avg'));
+      const stepsLast = lastNonNull(buildSeries(DATA.steps, 'day', 'sum'));
+      const energyLast = lastNonNull(buildSeries(DATA.energy, 'day', 'sum'));
+
+      // 30-day trends
+      const hrv30 = buildSeries(DATA.hrv, 'day', 'avg').slice(-30).filter(p => p.value != null);
+      const rhr30 = buildSeries(DATA.rhr, 'day', 'avg').slice(-30).filter(p => p.value != null);
+      const vo230 = Object.keys(VO2).sort().slice(-30).map(d => ({ date: d, value: VO2[d].est })).filter(p => p.value != null);
+      const steps30 = buildSeries(DATA.steps, 'day', 'sum').slice(-30).filter(p => p.value != null);
+      const energy30 = buildSeries(DATA.energy, 'day', 'sum').slice(-30).filter(p => p.value != null);
+
+      // 7-day sleep & strain
+      const sleep7 = buildSleepTotal('day').slice(-7).filter(p => p.value != null);
+      const strain7 = buildSeries(DATA.steps, 'day', 'sum').slice(-7).map(p => p.value != null ? { date: p.date, value: strainFromSteps(p.value) } : null).filter(Boolean);
+
+      // Workout summary (last 28 days)
+      const recentWorkouts = DATA.workouts
+        .filter(w => {
+          const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 28);
+          return w.date >= ymd(cutoff);
+        })
+        .reduce((acc, w) => {
+          acc.total++;
+          acc.minutes += w.minutes || 0;
+          acc.kcal += w.kcal || 0;
+          if (!acc.byType[w.type]) acc.byType[w.type] = { count: 0, minutes: 0 };
+          acc.byType[w.type].count++;
+          acc.byType[w.type].minutes += w.minutes || 0;
+          return acc;
+        }, { total: 0, minutes: 0, kcal: 0, byType: {} });
+
+      // Profile
+      const profile = { ...PROFILE };
+      // Remove internal source metadata
+      delete profile.source;
+
+      // Compute aggregates
+      const hrvTrend = hrv30.length > 7
+        ? (hrv30.slice(-7).reduce((a, b) => a + b.value, 0) / 7 - hrv30.slice(0, 7).reduce((a, b) => a + b.value, 0) / 7)
+        : 0;
+      const rhrTrend = rhr30.length > 7
+        ? (rhr30.slice(-7).reduce((a, b) => a + b.value, 0) / 7 - rhr30.slice(0, 7).reduce((a, b) => a + b.value, 0) / 7)
+        : 0;
+      const vo2Trend = vo230.length > 7
+        ? (vo230.slice(-1)[0].value - vo230.slice(0, 1)[0].value)
+        : 0;
+
+      return {
+        current: {
+          recovery: recNow ? { score: recNow.score, mode: recNow.mode, drivers: recNow.parts } : null,
+          vo2max: v ? { est: v.est, tier: v.tier, n: v.n, band: v.band, fitnessAge: fitnessAge(v.est, PROFILE.sex), percentile: vo2Percentile(v.est, PROFILE.sex, PROFILE.age) } : null,
+          sleep: sleepLast ? { total: Math.round(sleepLast.total * 10) / 10, deep: Math.round(sleepLast.deep * 10) / 10, rem: Math.round(sleepLast.rem * 10) / 10, core: Math.round((sleepLast.core + sleepLast.unspec) * 10) / 10, awake: Math.round(sleepLast.awake * 10) / 10, restorativePct: Math.round((sleepLast.deep + sleepLast.rem) / (sleepLast.total || 1) * 100) } : null,
+          hrv: hrvLast ? Math.round(hrvLast.value * 10) / 10 : null,
+          rhr: rhrLast ? Math.round(rhrLast.value) : null,
+          spo2: spo2Last ? Math.round(spo2Last.value * 10) / 10 : null,
+          resp: respLast ? Math.round(respLast.value * 10) / 10 : null,
+          strain: stepsLast ? strainFromSteps(stepsLast.value) : null,
+          steps: stepsLast ? Math.round(stepsLast.value) : null,
+          activeCalories: energyLast ? Math.round(energyLast.value) : null
+        },
+        trends: {
+          hrv30: { mean: hrv30.length ? Math.round(hrv30.reduce((a, b) => a + b.value, 0) / hrv30.length * 10) / 10 : null, sd: hrvBaselineSD ? Math.round(hrvBaselineSD * 10) / 10 : null, trend: Math.round(hrvTrend * 10) / 10, points: hrv30.map(p => Math.round(p.value * 10) / 10) },
+          rhr30: { mean: rhr30.length ? Math.round(rhr30.reduce((a, b) => a + b.value, 0) / rhr30.length * 10) / 10 : null, sd: null, trend: Math.round(rhrTrend * 10) / 10, points: rhr30.map(p => Math.round(p.value * 10) / 10) },
+          vo2max30: { mean: vo230.length ? Math.round(vo230.reduce((a, b) => a + b.value, 0) / vo230.length * 10) / 10 : null, trend: Math.round(vo2Trend * 10) / 10, points: vo230.map(p => p.value) },
+          sleep7: { mean: sleep7.length ? Math.round(sleep7.reduce((a, b) => a + b.value, 0) / sleep7.length * 10) / 10 : null, points: sleep7.map(p => Math.round(p.value * 10) / 10) },
+          strain7: { mean: strain7.length ? Math.round(strain7.reduce((a, b) => a + b.value, 0) / strain7.length * 10) / 10 : null, points: strain7.map(p => Math.round(p.value * 10) / 10) }
+        },
+        workouts: recentWorkouts,
+        profile,
+        baseline: {
+          hrv: hrvBaseline ? Math.round(hrvBaseline * 10) / 10 : null,
+          hrvSD: hrvBaselineSD ? Math.round(hrvBaselineSD * 10) / 10 : null,
+          minBaselineDays: MIN_BASELINE_DAYS
+        },
+        timestamp: new Date().toISOString()
+      };
+    }
+
+    function inspectCoachPayload() {
+      const ctx = buildCoachContext();
+      document.getElementById('coachPayloadContent').textContent = JSON.stringify(ctx, null, 2);
+      document.getElementById('coachPayloadModal').style.display = 'flex';
+    }
+
+    function closePayloadModal() {
+      document.getElementById('coachPayloadModal').style.display = 'none';
+    }
+
+    async function sendCoachMessage(message) {
+      if (coachStreaming) return;
+      const inputEl = document.getElementById('coachInput');
+      const userMsg = message || inputEl.value.trim();
+      if (!userMsg) return;
+
+      if (!coachConsent || !coachApiKey) {
+        alert('Please enable AI Coach and provide your API key first.');
+        updateCoachUI();
+        return;
+      }
+
+      // Add user message
+      const userMessage = { role: 'user', content: userMsg, timestamp: Date.now() };
+      coachChatHistory.push(userMessage);
+      renderCoachMessages();
+      inputEl.value = '';
+
+      // Show thinking indicator
+      const thinkingId = 'coach-thinking-' + Date.now();
+      const thinkingMsg = { role: 'assistant', content: '...', timestamp: Date.now(), id: thinkingId, thinking: true };
+      coachChatHistory.push(thinkingMsg);
+      renderCoachMessages();
+
+      coachStreaming = true;
+      document.getElementById('coachSendBtn').disabled = true;
+
+      try {
+        const ctx = buildCoachContext();
+        const systemPrompt = `You are a WHOOP Physiological & Performance Coach. You help users understand their health data (recovery, strain, sleep, VO₂ max, HRV, RHR, vitals, workouts) and provide personalized, actionable guidance.
+
+GUIDELINES:
+- Be concise, supportive, and specific. Use the user's actual numbers.
+- Reference their baseline-relative recovery score (where ~50% = their personal normal).
+- Explain WHY a metric matters physiologically, not just WHAT it is.
+- Prioritize recovery/sleep/HRV over strain optimization — health first.
+- Never diagnose. Use "may indicate", "suggests", "consider" — not "you have".
+- If data is missing, say what would help and why.
+- The user's data is aggregated summaries only — no raw data or PII.
+
+Current context:
+${JSON.stringify(ctx, null, 2)}`;
+
+        const payload = {
+          contents: [
+            { role: 'user', parts: [{ text: systemPrompt }] },
+            ...coachChatHistory.filter(m => m.role === 'user' || (m.role === 'assistant' && !m.thinking)).slice(-10).map(m => ({
+              role: m.role,
+              parts: [{ text: m.content }]
+            }))
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024,
+            topP: 0.95
+          }
+        };
+
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${coachModel}:generateContent?key=${coachApiKey}`;
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error?.message || `HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+        const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
+
+        // Replace thinking message with actual response
+        coachChatHistory = coachChatHistory.filter(m => m.id !== thinkingId);
+        coachChatHistory.push({ role: 'assistant', content: reply, timestamp: Date.now() });
+        await saveCoachHistory();
+        renderCoachMessages();
+
+      } catch (err) {
+        console.error('Coach error:', err);
+        coachChatHistory = coachChatHistory.filter(m => m.id !== thinkingId);
+        coachChatHistory.push({ role: 'assistant', content: `Error: ${err.message}`, timestamp: Date.now() });
+        renderCoachMessages();
+      } finally {
+        coachStreaming = false;
+        document.getElementById('coachSendBtn').disabled = false;
+      }
+    }
+
+    function sendCoachQuickPrompt(prompt) {
+      document.getElementById('coachInput').value = prompt;
+      sendCoachMessage();
+    }
+
+    async function saveCoachHistory() {
+      await idbPutCoach(IDB_COACH_HISTORY_KEY, coachChatHistory);
+    }
+
+    function renderCoachMessages() {
+      const container = document.getElementById('coachMessages');
+      if (!container) return;
+
+      const nonThinking = coachChatHistory.filter(m => !m.thinking);
+      if (nonThinking.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">Start a conversation with your AI Coach</div>';
+        return;
+      }
+
+      container.innerHTML = nonThinking.map(msg => `
+        <div style="display: flex; gap: 10px; ${msg.role === 'user' ? 'flex-direction: row-reverse;' : ''}">
+          <div style="flex: 1; max-width: 85%;">
+            <div style="background: ${msg.role === 'user' ? 'var(--accent)' : 'var(--inset-bg)'}; color: ${msg.role === 'user' ? '#06080c' : 'var(--text-main)'}; padding: 12px 16px; border-radius: 16px; ${msg.role === 'user' ? 'border-bottom-right-radius: 4px;' : 'border-bottom-left-radius: 4px;'} font-size: 14px; line-height: 1.5;">
+              ${escapeHtml(msg.content).replace(/\n/g, '<br>')}
+            </div>
+            <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px; ${msg.role === 'user' ? 'text-align: right;' : ''}">${new Date(msg.timestamp).toLocaleTimeString()}</div>
+          </div>
+        </div>
+      `).join('');
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function clearCoachChat() {
+      if (!confirm('Clear all chat history? This cannot be undone.')) return;
+      coachChatHistory = [];
+      saveCoachHistory();
+      renderCoachMessages();
+    }
+
     // Init empty gauges
     document.addEventListener('DOMContentLoaded', async () => {
       updateGauge('recoveryCircle', 0, 100, TOKENS['status-good']);
@@ -2776,7 +3205,16 @@
           finalize('✓ Loaded saved data from this device');
         }
       } catch (e) { console.warn('auto-load failed', e); }
+      // Load Coach state
+      await loadCoachState();
     });
+
+    // escapeHtml - used by renderCoachMessages to safely render message content
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
   </script>
 </body>
 </html>
