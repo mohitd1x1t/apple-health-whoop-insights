@@ -804,7 +804,7 @@
       <div class="field" style="margin-bottom: 12px;">
         <label for="coachModel">Model</label>
         <select id="coachModel" onchange="coachModel = this.value; saveCoachSettings();">
-          <option value="gemini-1.5-flash-latest">gemini-1.5-flash-latest (recommended)</option>
+          <option value="gemini-1.5-flash">gemini-1.5-flash (recommended)</option>
           <option value="gemini-1.5-pro">gemini-1.5-pro</option>
         </select>
       </div>
@@ -917,7 +917,7 @@
     // Coach state
     let coachConsent = false;
     let coachApiKey = '';
-    let coachModel = 'gemini-1.5-flash-latest';
+    let coachModel = 'gemini-1.5-flash';
     let coachChatHistory = [];
     let coachStreaming = false;
 
@@ -2064,8 +2064,11 @@
       if (!(hrMax - rhr > 20)) return null;
       const speed = w.metres / w.minutes;                       // m/min
       if (!(speed >= 40 && speed <= 400)) return null;           // 2.4–24 km/h; outside is bad GPS
-      const vo2eff = speed >= 134 ? 0.2 * speed + 3.5            // ACSM running
-                                  : 0.1 * speed + 3.5;           // ACSM walking
+      // For Running workouts, ALWAYS use the ACSM running equation regardless of pace.
+      // The workout type indicates the gait; a slow jog is still running biomechanically.
+      // Using the walking equation for slow runs (speed < 134 m/min ≈ 8 km/h) was dragging
+      // real ~42 VO2max down to ~16 because the walking equation underestimates O2 cost.
+      const vo2eff = 0.2 * speed + 3.5;                          // ACSM running equation
       const f = (w.avgHR - rhr) / (hrMax - rhr);                 // HR-reserve fraction
       if (!(f >= 0.40 && f <= 0.95)) return null;
       const est = 3.5 + (vo2eff - 3.5) / f;                      // HRR ∝ VO2R
@@ -2902,7 +2905,7 @@
         if (settings) {
           coachConsent = settings.consent || false;
           coachApiKey = settings.apiKey || '';
-          coachModel = settings.model || 'gemini-1.5-flash-latest';
+          coachModel = settings.model || 'gemini-1.5-flash';
           document.getElementById('coachConsentCheck').checked = coachConsent;
           document.getElementById('coachApiKey').value = coachApiKey;
           document.getElementById('coachModel').value = coachModel;
@@ -3117,6 +3120,7 @@ ${JSON.stringify(ctx, null, 2)}`;
         };
 
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${coachModel}:generateContent?key=${coachApiKey}`;
+        console.log('Coach request:', { model: coachModel, url: url.replace(coachApiKey, '***'), payload });
         const response = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3125,10 +3129,12 @@ ${JSON.stringify(ctx, null, 2)}`;
 
         if (!response.ok) {
           const err = await response.json();
+          console.error('Gemini API error:', err);
           throw new Error(err.error?.message || `HTTP ${response.status}`);
         }
 
         const data = await response.json();
+        console.log('Coach response:', data);
         const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response received.';
 
         // Replace thinking message with actual response
