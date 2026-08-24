@@ -818,6 +818,7 @@
         <div style="display: flex; gap: 8px; align-items: center;">
           <button class="btn btn-secondary" onclick="inspectCoachPayload()" style="font-size: 12px; padding: 6px 12px;">Inspect Payload</button>
           <button class="btn btn-secondary" onclick="clearCoachChat()" style="font-size: 12px; padding: 6px 12px;">Clear Chat</button>
+          <button class="btn btn-secondary" onclick="resetCoach()" style="font-size: 12px; padding: 6px 12px;">Reset Coach</button>
         </div>
       </div>
 
@@ -2905,10 +2906,15 @@
         if (settings) {
           coachConsent = settings.consent || false;
           coachApiKey = settings.apiKey || '';
-          coachModel = settings.model || 'gemini-1.5-flash';
+          // Migrate old model name
+          let model = settings.model || 'gemini-1.5-flash';
+          if (model === 'gemini-1.5-flash-latest') model = 'gemini-1.5-flash';
+          coachModel = model;
           document.getElementById('coachConsentCheck').checked = coachConsent;
           document.getElementById('coachApiKey').value = coachApiKey;
           document.getElementById('coachModel').value = coachModel;
+          // Save migrated model back
+          if (model !== settings.model) await saveCoachSettings();
         }
         const history = await idbGetCoach(IDB_COACH_HISTORY_KEY);
         if (history && history.length) {
@@ -3190,6 +3196,18 @@ ${JSON.stringify(ctx, null, 2)}`;
       if (!confirm('Clear all chat history? This cannot be undone.')) return;
       coachChatHistory = [];
       saveCoachHistory();
+      renderCoachMessages();
+    }
+
+    async function resetCoach() {
+      if (!confirm('Reset coach settings and clear all chat history? This cannot be undone.')) return;
+      coachConsent = false;
+      coachApiKey = '';
+      coachModel = 'gemini-1.5-flash';
+      coachChatHistory = [];
+      await idbDeleteCoach(IDB_COACH_SETTINGS_KEY);
+      await idbDeleteCoach(IDB_COACH_HISTORY_KEY);
+      updateCoachUI();
       renderCoachMessages();
     }
 
