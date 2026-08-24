@@ -70,7 +70,7 @@ the three tiers are not equally trustworthy:
 
 | Tier | Method | Needs | Used when |
 |---|---|---|---|
-| **1** | Submaximal HR/speed extrapolation (ACSM metabolic equations + HR-reserve) | Workouts with duration, distance and average HR | ≥3 qualifying workouts in the trailing 28 days |
+| **1** | Submaximal HR/speed extrapolation (ACSM metabolic equations + HR-reserve) | **Running** workouts with duration, distance and average HR | ≥3 qualifying runs in the trailing 28 days |
 | **2** | Uth–Sørensen HR ratio — `15.3 × HRmax / RHR` | Resting HR + an HRmax | You have RHR but don't log workouts |
 | **3** | Jackson non-exercise model | Age, sex, BMI, activity volume | Neither of the above |
 
@@ -89,8 +89,15 @@ A workout must clear every gate — duration ≥ 8 min, distance > 0, average HR
 should drop out of the series, not bias it. The day's value is the **median** of the qualifying
 workouts in the trailing 28 days.
 
-Four things worth knowing:
+Five things worth knowing:
 
+- **Only running feeds tier 1.** The speed→O₂ step is the ACSM *running* equation, and the
+  HR-reserve extrapolation only behaves for a sustained aerobic effort. Walking has too low an
+  oxygen cost to extrapolate — on a walk-heavy log a real ~42 collapses toward ~16 — and
+  cycling/rowing/strength either cover distance at a different economy or carry none at all. So
+  walking, cycling and strength workouts are excluded from tier 1; if you don't run, the estimate
+  comes from the HR-ratio or non-exercise tier instead, which is the honest answer rather than a
+  wrong one dressed up as a measurement.
 - **HRmax is observed, not assumed, and it's robust.** We take the **median of the top decile** of
   your daily HR maxima over the trailing year (≥20 days required), after discarding any reading
   outside 90–220 bpm. The obvious choice — a 99th percentile — is wrong at realistic sample sizes:

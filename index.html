@@ -1920,6 +1920,14 @@
     //   biases the median, a dropped one doesn't.
     function tier1FromWorkout(w, rhr, hrMax) {
       if (!w || !hrMax || rhr == null) return null;
+      // The distance->VO2 step IS the ACSM running equation, and the HR-reserve extrapolation only
+      // behaves for a sustained aerobic effort. Walking has such a low absolute O2 cost that it
+      // extrapolates to an implausibly low VO2max for anyone who walks easily -- a real ~42 was
+      // being dragged to ~16 by a log dominated by walks. Cycling/rowing/elliptical cover distance
+      // at a completely different economy, and strength training has no distance at all. So tier 1
+      // reads ONLY running workouts; everything else falls through to the HR-ratio or non-exercise
+      // tier, which is the honest answer when there's no running to measure.
+      if (w.type !== 'Running') return null;
       if (!(w.minutes >= 8)) return null;
       if (!(w.metres > 0)) return null;
       if (w.avgHR == null) return null;
@@ -2525,7 +2533,7 @@
       const tier = v ? v.tier : null;
       const rows = [
         ['Tier 1 — submaximal HR/speed <em>(most accurate)</em>',
-         'For each workout of 8+ minutes with distance and average HR: the ACSM metabolic equations give the oxygen cost of the pace you actually held (<code>0.2 × m/min + 3.5</code> running, <code>0.1 × m/min + 3.5</code> walking); the heart-rate-reserve fraction <code>f = (avgHR − RHR) / (HRmax − RHR)</code> says what share of your capacity that cost consumed; <code>VO₂max = 3.5 + (VO₂ − 3.5) / f</code> extrapolates to 100%. We pool the trailing ' + VO2_WINDOW + ' days and take the <strong>median</strong>, so one bad GPS trace can\'t move the number. Workouts outside the valid range (f below 0.40 or above 0.95, result outside 15–85) are <strong>discarded, not clamped</strong>.'],
+         'For each <strong>running</strong> workout of 8+ minutes with distance and average HR: the ACSM metabolic equations give the oxygen cost of the pace you actually held (<code>0.2 × m/min + 3.5</code> at running speed, <code>0.1 × m/min + 3.5</code> for slow-jog stretches); the heart-rate-reserve fraction <code>f = (avgHR − RHR) / (HRmax − RHR)</code> says what share of your capacity that cost consumed; <code>VO₂max = 3.5 + (VO₂ − 3.5) / f</code> extrapolates to 100%. We pool the trailing ' + VO2_WINDOW + ' days and take the <strong>median</strong>, so one bad GPS trace can\'t move the number. Workouts outside the valid range (f below 0.40 or above 0.95, result outside 15–85) are <strong>discarded, not clamped</strong>. <strong>Only running counts here</strong> — walking, cycling and strength cover distance at a different economy (or none), so the speed→O₂ equation doesn\'t apply and mixing them in pulls the estimate far below reality.'],
         ['Tier 2 — HRmax / resting-HR ratio',
          'Uth–Sørensen: <code>VO₂max ≈ 15.3 × HRmax / RHR</code>. Used when there aren\'t ' + VO2_MIN_TIER1 + ' qualifying workouts in the window. Needs no workouts at all.'],
         ['Tier 3 — non-exercise model',
