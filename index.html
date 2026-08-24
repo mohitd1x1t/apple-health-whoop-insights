@@ -5,22 +5,79 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>VibePulse — Whoop-Style Apple Health Insights</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b0e14">
+  <meta name="theme-color" content="#080a10">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
+    /* ------------------------------------------------------------------------
+       Design tokens.
+
+       Every color below was run through the data-viz validator against this
+       app's real card surface (#12161f) rather than picked by eye. The previous
+       palette had a genuine defect, not just a dull one: sleep-stage Deep
+       (#5e35b1) and REM (#8e24aa) measured OKLab ΔE 1.1 under protanopia and
+       9.6 with full color vision, against a hard floor of 15 — the two bars
+       were the same color to a red-green colorblind reader and near-identical
+       to everyone else.
+
+       Rules this file now follows:
+         - Status colors (good/warn/crit) are reserved for state and are never
+           reused as a series color.
+         - Text always wears a text token. A colored MARK (dot, border, stroke)
+           beside it carries the identity. This is also why category labels are
+           no longer painted in the status color — #d03b3b is only 3.6:1, below
+           AA for small text, whereas a dot has no contrast requirement.
+         - Series colors follow the entity, never its rank.
+       ------------------------------------------------------------------------ */
     :root {
-      --bg-dark: #0b0e14;
-      --card-bg: #141824;
+      /* Surfaces — a real three-step hierarchy, replacing two flat greys. */
+      --bg-dark: #080a10;      /* page plane */
+      --card-bg: #12161f;      /* card + chart surface (the validator's surface) */
+      --inset-bg: #1a1f2b;     /* insets nested inside a card */
       --card-border: rgba(255, 255, 255, 0.08);
       --text-main: #f1f5f9;
       --text-muted: #94a3b8;
 
-      --recovery-green: #00e676;
-      --recovery-yellow: #ffea00;
-      --recovery-red: #ff1744;
-      --strain-blue: #29b6f6;
-      --sleep-purple: #ab47bc;
-      --vitals-cyan: #26c6da;
+      /* Status palette — fixed, never themed. All clear 3:1 on --card-bg. */
+      --status-good: #0ca30c;
+      --status-warn: #fab219;
+      --status-crit: #d03b3b;
+
+      /* Categorical series slots (dark steps, validated as a set). */
+      --series-blue: #3987e5;
+      --series-orange: #d95926;
+      --series-aqua: #199e70;
+      --series-yellow: #c98500;
+      --series-magenta: #d55181;
+      --series-violet: #9085e9;
+      --series-red: #e66767;
+
+      /* Ordinal blue ramp — VO2 percentile bands, recovery heatmap.
+         Validated --ordinal: monotone L, every ΔL gap >= 0.06, light end 2.23:1. */
+      --ramp-1: #cde2fb;
+      --ramp-2: #9ec5f4;
+      --ramp-3: #5598e7;
+      --ramp-4: #256abf;
+      --ramp-5: #184f95;
+
+      /* Per-metric accents, assigned by entity. The legacy names are kept so the
+         inline styles in the markup keep resolving; only the values changed. */
+      --recovery-green: var(--series-aqua);
+      --recovery-yellow: var(--series-yellow);
+      --recovery-red: var(--series-red);
+      --strain-blue: var(--series-blue);
+      --sleep-purple: var(--series-violet);
+      --vitals-cyan: var(--series-blue);
+      --vo2-accent: var(--series-blue);
+
+      /* Re-set on <body> every render from today's recovery band, so the whole
+         UI shifts color with readiness instead of sitting on one fixed green. */
+      --accent: var(--status-good);
+      --accent-soft: rgba(12, 163, 12, 0.14);
+
+      /* Motion. Zeroed wholesale under prefers-reduced-motion (see bottom). */
+      --dur-fast: .18s;
+      --dur-mid: .35s;
+      --dur-slow: 1s;
     }
 
     * {
@@ -53,10 +110,14 @@
     .brand { display: flex; align-items: center; gap: 12px; }
     .brand-logo {
       width: 42px; height: 42px;
-      background: linear-gradient(135deg, var(--recovery-green), var(--strain-blue));
+      /* Was a #00e676→#00b0ff gradient that also appeared on .tab.active and
+         .btn-primary. One gradient doing three unrelated jobs is most of why the
+         app read as templated. Now: a flat accent chip that tracks recovery. */
+      background: var(--accent);
       border-radius: 12px;
       display: flex; align-items: center; justify-content: center;
-      font-weight: 900; color: #000; font-size: 22px;
+      font-weight: 900; color: #06080c; font-size: 22px;
+      transition: background var(--dur-mid) ease;
     }
     .brand h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
     .brand p { font-size: 12px; color: var(--text-muted); }
@@ -65,16 +126,17 @@
     .data-stats { font-size: 12px; color: var(--text-muted); }
 
     .btn {
-      background: #202637; color: #fff;
+      background: var(--inset-bg); color: #fff;
       border: 1px solid var(--card-border);
       padding: 10px 18px; border-radius: 8px;
       font-size: 14px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease;
+      transition: background var(--dur-fast) ease, border-color var(--dur-fast) ease, transform var(--dur-fast) ease;
       display: inline-flex; align-items: center; gap: 8px;
     }
-    .btn:hover { background: #2a3248; border-color: rgba(255, 255, 255, 0.2); }
-    .btn-primary { background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; font-weight: 700; border: none; }
-    .btn-primary:hover { opacity: 0.9; box-shadow: 0 0 15px rgba(0, 230, 118, 0.3); }
+    .btn:hover { background: #232a3a; border-color: rgba(255, 255, 255, 0.2); }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: #06080c; font-weight: 700; border: none; }
+    .btn-primary:hover { background: var(--accent); filter: brightness(1.12); }
 
     /* Dropzone */
     .dropzone-container {
@@ -84,34 +146,42 @@
       margin-bottom: 24px; transition: all 0.3s ease;
       cursor: pointer; position: relative;
     }
-    .dropzone-container:hover, .dropzone-container.dragover { border-color: var(--recovery-green); background: rgba(0, 230, 118, 0.03); }
+    .dropzone-container:hover, .dropzone-container.dragover { border-color: var(--accent); background: var(--accent-soft); }
     .dropzone-icon { font-size: 36px; margin-bottom: 8px; }
     .dropzone-title { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
-    .dropzone-subtitle { font-size: 13px; color: var(--text-muted); max-width: 550px; margin: 0 auto 12px; line-height: 1.4; }
+    .dropzone-subtitle { font-size: 13px; color: var(--text-muted); max-width: 620px; margin: 0 auto 12px; line-height: 1.5; }
     #fileInput { display: none; }
     .status-badge {
       display: inline-flex; align-items: center; gap: 6px;
       padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
-      background: rgba(0, 230, 118, 0.1); color: var(--recovery-green);
+      background: var(--accent-soft); color: var(--text-main);
     }
 
     /* Tabs */
     .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
     .tab {
-      background: #141824; border: 1px solid var(--card-border); color: var(--text-muted);
+      background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-muted);
       padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer;
-      transition: all .2s;
+      transition: color var(--dur-fast), border-color var(--dur-fast), background var(--dur-fast);
     }
     .tab:hover { border-color: rgba(255, 255, 255, .2); color: var(--text-main); }
-    .tab.active { background: linear-gradient(135deg, #00e676, #00b0ff); color: #000; border: none; }
+    /* Active tab is marked by ink + a bottom rule in the accent, not a gradient
+       fill. Keeps the label in a text token instead of on a colored plate. */
+    .tab.active {
+      background: var(--inset-bg); color: var(--text-main);
+      border-color: rgba(255, 255, 255, .18);
+      box-shadow: inset 0 -2px 0 0 var(--accent);
+    }
 
     .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-start; }
     .range-toggle { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
     .range-toggle button {
-      background: #202637; border: 1px solid var(--card-border); color: var(--text-muted);
+      background: var(--card-bg); border: 1px solid var(--card-border); color: var(--text-muted);
       padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: color var(--dur-fast), background var(--dur-fast), border-color var(--dur-fast);
     }
-    .range-toggle button.active { background: #2a3248; color: var(--text-main); border-color: rgba(255, 255, 255, .25); }
+    .range-toggle button:hover { color: var(--text-main); }
+    .range-toggle button.active { background: var(--inset-bg); color: var(--text-main); border-color: rgba(255, 255, 255, .25); }
 
     .section { display: none; }
     .section.active { display: block; animation: fade .25s ease; }
@@ -127,6 +197,16 @@
       background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px;
       padding: 20px; display: flex; flex-direction: column; position: relative; overflow: hidden;
     }
+    /* Staggered entrance. `.enter` is added by JS after a render so the delay
+       chain restarts on every data load, not just on first paint. */
+    .card.enter, .chart-card.enter { animation: cardIn var(--dur-mid) cubic-bezier(.22, .61, .36, 1) both; }
+    @keyframes cardIn { from { opacity: 0; transform: translateY(14px) scale(.99); } to { opacity: 1; transform: none; } }
+    .card.enter:nth-child(1), .chart-card.enter:nth-child(1) { animation-delay: 0ms; }
+    .card.enter:nth-child(2), .chart-card.enter:nth-child(2) { animation-delay: 60ms; }
+    .card.enter:nth-child(3), .chart-card.enter:nth-child(3) { animation-delay: 120ms; }
+    .card.enter:nth-child(4), .chart-card.enter:nth-child(4) { animation-delay: 180ms; }
+    .card.enter:nth-child(5), .chart-card.enter:nth-child(5) { animation-delay: 240ms; }
+    .card.enter:nth-child(6), .chart-card.enter:nth-child(6) { animation-delay: 300ms; }
     .col-4 { grid-column: span 4; }
     .col-6 { grid-column: span 6; }
     .col-8 { grid-column: span 8; }
@@ -154,73 +234,157 @@
     .gauge-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 0; }
     .gauge-container { position: relative; width: 170px; height: 170px; }
     .gauge-circle { transform: rotate(-90deg); width: 100%; height: 100%; }
-    .gauge-bg { fill: none; stroke: #202637; stroke-width: 12; }
-    .gauge-fill { fill: none; stroke: var(--recovery-green); stroke-width: 12; stroke-linecap: round; stroke-dasharray: 440; stroke-dashoffset: 100; transition: stroke-dashoffset 1s ease-in-out, stroke 0.3s; }
+    .gauge-bg { fill: none; stroke: var(--inset-bg); stroke-width: 12; }
+    /* Segmented tick track behind the fill — reads as a dial rather than a plain
+       ring, and gives the sweep something to travel against. */
+    .gauge-ticks { fill: none; stroke: rgba(255, 255, 255, .10); stroke-width: 12; stroke-dasharray: 2 12.7; }
+    .gauge-fill {
+      fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
+      transition: stroke-dashoffset var(--dur-slow) cubic-bezier(.22, .61, .36, 1), stroke var(--dur-mid);
+    }
     .gauge-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; }
-    .gauge-score { font-size: 42px; font-weight: 800; line-height: 1; }
+    .gauge-score { font-size: 42px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
     .gauge-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-top: 4px; }
     .metric-sublist { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--card-border); }
     .submetric-item { display: flex; flex-direction: column; }
     .submetric-val { font-size: 18px; font-weight: 700; color: var(--text-main); }
     .submetric-lbl { font-size: 11px; color: var(--text-muted); }
+    /* Deviation chip: "↑1.2 SD". Ink stays a text token; the arrow carries sign. */
+    .dev-chip { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-left: 6px; white-space: nowrap; }
+
+    /* Status dot — the mark that carries state so the label can stay in ink.
+       Status red is only 3.6:1 on this surface, below AA for small text, but a
+       dot has no contrast requirement. */
+    .state-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+    .state-good { background: var(--status-good); }
+    .state-warn { background: var(--status-warn); }
+    .state-crit { background: var(--status-crit); }
+    .state-label { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--text-main); letter-spacing: .5px; }
+
+    /* Sparkline strip for KPI tiles */
+    .spark { width: 100%; height: 28px; display: block; margin-top: 8px; overflow: visible; }
 
     /* Strain Gauge */
     .strain-fill { stroke: var(--strain-blue); }
 
     /* Vitals Grid */
     .vitals-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; height: 100%; }
-    .vital-box { background: #1a202c; border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--vitals-cyan); }
+    .vital-box { background: var(--inset-bg); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between; border-left: 4px solid var(--vitals-cyan); }
     .vital-name { font-size: 12px; color: var(--text-muted); font-weight: 600; }
-    .vital-value { font-size: 22px; font-weight: 800; margin: 6px 0; }
-    .vital-status { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
-    .status-ok { color: var(--recovery-green); }
-    .status-warn { color: var(--recovery-yellow); }
-    .status-bad { color: var(--recovery-red); }
+    .vital-value { font-size: 22px; font-weight: 800; margin: 6px 0; font-variant-numeric: tabular-nums; }
+    /* Status text wears a text token; the dot beside it carries the state. */
+    .vital-status { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 5px; color: var(--text-muted); }
+    .status-ok, .status-warn, .status-bad { color: var(--text-muted); }
 
     /* Insights Section */
     .insights-container { display: flex; flex-direction: column; gap: 14px; }
-    .insight-card { background: #1a202c; border-radius: 12px; padding: 14px; display: flex; gap: 14px; align-items: flex-start; border-left: 4px solid var(--text-muted); }
-    .insight-card.good { border-left-color: var(--recovery-green); background: rgba(0, 230, 118, 0.05); }
-    .insight-card.wrong { border-left-color: var(--recovery-red); background: rgba(255, 23, 68, 0.05); }
-    .insight-card.info { border-left-color: var(--strain-blue); background: rgba(41, 182, 246, 0.05); }
+    .insight-card { background: var(--inset-bg); border-radius: 12px; padding: 14px; display: flex; gap: 14px; align-items: flex-start; border-left: 4px solid var(--text-muted); }
+    .insight-card.good { border-left-color: var(--status-good); }
+    .insight-card.wrong { border-left-color: var(--status-crit); }
+    .insight-card.info { border-left-color: var(--series-blue); }
     .insight-icon { font-size: 20px; padding-top: 2px; }
     .insight-content { flex: 1; }
     .insight-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-    .insight-body { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+    .insight-body { font-size: 13px; color: var(--text-muted); line-height: 1.45; }
 
-    /* Sleep Stages Bar */
+    /* Sleep Stages Bar.
+       Four slots, not five: every 5-color candidate failed the validator on the
+       neutral "Unspecified" grey (chroma 0.02 reads as no-data, and it landed
+       13.8-14.4 ΔE from its neighbour against a floor of 15). Apple's
+       AsleepUnspecified means "asleep, stage unknown", so it is folded into Core
+       for display. DATA.sleep keeps the stage, so sleepScore01's restorative
+       fraction is untouched. This 4-slot set passes all six checks. */
     .sleep-bar-container { margin-top: 8px; }
-    .sleep-bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin-bottom: 12px; }
-    .stage-deep { background: #5e35b1; }
-    .stage-rem { background: #8e24aa; }
-    .stage-core { background: #1e88e5; }
-    .stage-awake { background: #e53935; }
+    .sleep-bar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; margin-bottom: 12px; gap: 2px; }
+    .stage-deep { background: var(--series-violet); }
+    .stage-rem { background: var(--series-magenta); }
+    .stage-core { background: var(--series-blue); }
+    .stage-awake { background: var(--series-red); }
     .sleep-legend { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 
     /* Loader Overlay */
     .loader {
       display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(11, 14, 20, 0.85); backdrop-filter: blur(4px); z-index: 10;
+      background: rgba(8, 10, 16, 0.86); backdrop-filter: blur(4px); z-index: 10;
       align-items: center; justify-content: center; flex-direction: column; gap: 12px; border-radius: 16px;
     }
-    .spinner { width: 36px; height: 36px; border: 4px solid var(--card-border); border-top-color: var(--recovery-green); border-radius: 50%; animation: spin 1s linear infinite; }
+    .spinner { width: 36px; height: 36px; border: 4px solid var(--card-border); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
     /* Chart tooltip (glassmorphic) */
     .chart-tooltip {
       position: fixed; z-index: 9999; pointer-events: none;
-      background: rgba(20, 24, 36, 0.72); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+      background: rgba(18, 22, 31, 0.78); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 10px;
-      padding: 10px 12px; min-width: 130px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      padding: 10px 12px; min-width: 130px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
       font-size: 12px; color: var(--text-main);
     }
     .chart-tooltip .tooltip-label { font-weight: 700; font-size: 12px; margin-bottom: 6px; color: var(--text-main); }
     .chart-tooltip .tooltip-row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
     .chart-tooltip .tooltip-dot { width: 9px; height: 9px; border-radius: 3px; flex: 0 0 auto; }
     .chart-tooltip .tooltip-name { color: var(--text-muted); flex: 1 1 auto; }
-    .chart-tooltip .tooltip-value { font-weight: 700; color: var(--text-main); }
-    .btn-secondary { background: #202637; color: #fff; border: 1px solid var(--card-border); }
-    .btn-secondary:hover { background: #2a3248; }
+    .chart-tooltip .tooltip-value { font-weight: 700; color: var(--text-main); font-variant-numeric: tabular-nums; }
+    .btn-secondary { background: var(--inset-bg); color: #fff; border: 1px solid var(--card-border); }
+    .btn-secondary:hover { background: #232a3a; }
+
+    /* ---------------- Hero figure (VO2 tab lead) ---------------- */
+    .hero-row { display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; }
+    .hero-figure { font-size: 64px; font-weight: 800; line-height: .95; letter-spacing: -2px; color: var(--text-main); }
+    .hero-unit { font-size: 15px; font-weight: 600; color: var(--text-muted); margin-left: 8px; letter-spacing: 0; }
+    .hero-meta { display: flex; flex-direction: column; gap: 4px; padding-bottom: 6px; }
+    .hero-delta { font-size: 13px; font-weight: 700; color: var(--text-main); display: inline-flex; align-items: center; gap: 6px; }
+    .hero-note { font-size: 12px; color: var(--text-muted); }
+
+    .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-top: 4px; }
+    .stat-tile { background: var(--inset-bg); border-radius: 12px; padding: 14px; }
+    .stat-tile .k { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-muted); font-weight: 700; }
+    .stat-tile .v { font-size: 26px; font-weight: 800; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .stat-tile .n { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* Disclosure ("how this is calculated", "what gets sent") */
+    details.disclose { margin-top: 14px; border: 1px solid var(--card-border); border-radius: 10px; background: var(--inset-bg); }
+    details.disclose > summary { cursor: pointer; padding: 10px 14px; font-size: 12px; font-weight: 700; color: var(--text-muted); list-style: none; }
+    details.disclose > summary::-webkit-details-marker { display: none; }
+    details.disclose > summary::before { content: '▸ '; }
+    details.disclose[open] > summary::before { content: '▾ '; }
+    details.disclose > summary:hover { color: var(--text-main); }
+    .disclose-body { padding: 0 14px 14px; font-size: 12.5px; color: var(--text-muted); line-height: 1.6; }
+    .disclose-body code { background: rgba(255, 255, 255, .06); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+
+    /* Inline checkbox control (e.g. "show Apple's readings") */
+    .check-row { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); cursor: pointer; user-select: none; }
+    .check-row input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
+    /* Profile form (age / sex / height / weight for the non-exercise model) */
+    .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 11px; text-transform: uppercase; letter-spacing: .7px; color: var(--text-muted); font-weight: 700; }
+    .field input, .field select {
+      background: var(--inset-bg); border: 1px solid var(--card-border); color: var(--text-main);
+      border-radius: 8px; padding: 9px 10px; font-size: 14px; font-weight: 600; width: 100%;
+    }
+    .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+
+    /* Chart path draw-in. Set --len to the path length in JS, then add .draw. */
+    .draw { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: drawIn 1.1s cubic-bezier(.22, .61, .36, 1) forwards; }
+    @keyframes drawIn { to { stroke-dashoffset: 0; } }
+
+    /* ------------------------------------------------------------------------
+       Reduced motion. Every animation and transition introduced above is
+       suppressed here — the accent still changes color, the ring still shows the
+       right value, they just arrive instantly.
+       ------------------------------------------------------------------------ */
+    @media (prefers-reduced-motion: reduce) {
+      :root { --dur-fast: 0s; --dur-mid: 0s; --dur-slow: 0s; }
+      *, *::before, *::after {
+        animation-duration: 0s !important;
+        animation-delay: 0s !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0s !important;
+      }
+      .draw { stroke-dasharray: none !important; stroke-dashoffset: 0 !important; }
+      .spinner { animation: none !important; border-top-color: var(--accent); }
+    }
   </style>
 </head>
 <body>
@@ -260,6 +424,7 @@
     <button class="tab" data-tab="recovery">Recovery</button>
     <button class="tab" data-tab="strain">Strain</button>
     <button class="tab" data-tab="sleep">Sleep</button>
+    <button class="tab" data-tab="vo2">VO₂ Max</button>
     <button class="tab" data-tab="vitals">Vitals</button>
   </nav>
 
@@ -286,27 +451,29 @@
       <div class="card col-4">
         <div class="card-title">
           <span>Recovery Score</span>
-          <span id="recoveryCategory" style="color: var(--recovery-green); font-size: 11px;">—</span>
+          <span class="state-label" id="recoveryCategory"><span class="state-dot state-good"></span>—</span>
         </div>
         <div class="gauge-wrapper">
           <div class="gauge-container">
             <svg class="gauge-circle" viewBox="0 0 160 160">
               <circle class="gauge-bg" cx="80" cy="80" r="70"></circle>
+              <circle class="gauge-ticks" cx="80" cy="80" r="70"></circle>
               <circle class="gauge-fill" id="recoveryCircle" cx="80" cy="80" r="70"></circle>
             </svg>
             <div class="gauge-center">
-              <div class="gauge-score" id="recoveryScore" style="color: var(--recovery-green);">—</div>
+              <div class="gauge-score" id="recoveryScore">—</div>
               <div class="gauge-label">RECOVERY</div>
             </div>
           </div>
         </div>
+        <svg class="spark" id="recoverySpark" viewBox="0 0 240 28" preserveAspectRatio="none"></svg>
         <div class="metric-sublist">
           <div class="submetric-item">
-            <span class="submetric-val" id="hrvVal">—</span>
+            <span><span class="submetric-val" id="hrvVal">—</span><span class="dev-chip" id="hrvDev"></span></span>
             <span class="submetric-lbl">HRV (SDNN) latest</span>
           </div>
           <div class="submetric-item">
-            <span class="submetric-val" id="rhrVal">—</span>
+            <span><span class="submetric-val" id="rhrVal">—</span><span class="dev-chip" id="rhrDev"></span></span>
             <span class="submetric-lbl">Resting HR latest</span>
           </div>
         </div>
@@ -316,20 +483,22 @@
       <div class="card col-4">
         <div class="card-title">
           <span>Day Strain</span>
-          <span style="color: var(--strain-blue); font-size: 11px;">FROM ACTIVITY</span>
+          <span style="font-size: 11px; color: var(--text-muted);">FROM ACTIVITY</span>
         </div>
         <div class="gauge-wrapper">
           <div class="gauge-container">
             <svg class="gauge-circle" viewBox="0 0 160 160">
               <circle class="gauge-bg" cx="80" cy="80" r="70"></circle>
+              <circle class="gauge-ticks" cx="80" cy="80" r="70"></circle>
               <circle class="gauge-fill strain-fill" id="strainCircle" cx="80" cy="80" r="70"></circle>
             </svg>
             <div class="gauge-center">
-              <div class="gauge-score" id="strainScore" style="color: var(--strain-blue);">—</div>
+              <div class="gauge-score" id="strainScore">—</div>
               <div class="gauge-label">STRAIN</div>
             </div>
           </div>
         </div>
+        <svg class="spark" id="strainSpark" viewBox="0 0 240 28" preserveAspectRatio="none"></svg>
         <div class="metric-sublist">
           <div class="submetric-item">
             <span class="submetric-val" id="calsVal">—</span>
@@ -346,10 +515,10 @@
       <div class="card col-4">
         <div class="card-title">
           <span>Sleep Performance</span>
-          <span id="sleepCat" style="color: var(--sleep-purple); font-size: 11px;">—</span>
+          <span id="sleepCat" style="font-size: 11px; color: var(--text-muted);">—</span>
         </div>
         <div style="margin: 6px 0 14px;">
-          <div style="font-size: 30px; font-weight: 800;" id="sleepDuration">—</div>
+          <div style="font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums;" id="sleepDuration">—</div>
           <div style="font-size: 12px; color: var(--text-muted);">Optimal Sleep Target: 8h 15m</div>
         </div>
         <div class="sleep-bar-container">
@@ -362,38 +531,63 @@
           <div class="sleep-legend">
             <div class="legend-item"><div class="legend-dot stage-deep"></div>Deep <span id="ovDeepL">0%</span></div>
             <div class="legend-item"><div class="legend-dot stage-rem"></div>REM <span id="ovRemL">0%</span></div>
-            <div class="legend-item"><div class="legend-dot stage-core"></div>Core <span id="ovCoreL">0%</span></div>
+            <div class="legend-item" title="Includes Apple's AsleepUnspecified — asleep with no stage detail"><div class="legend-dot stage-core"></div>Core <span id="ovCoreL">0%</span></div>
             <div class="legend-item"><div class="legend-dot stage-awake"></div>Awake <span id="ovAwakeL">0%</span></div>
           </div>
         </div>
-        <div style="margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--recovery-green); font-weight: 600;" id="ovRestorative">
+        <svg class="spark" id="sleepSpark" viewBox="0 0 240 28" preserveAspectRatio="none"></svg>
+        <div style="margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--text-muted); font-weight: 600;" id="ovRestorative">
           Restorative Sleep (Deep + REM)
         </div>
       </div>
 
+      <!-- VO2 MAX (estimated by us — see the VO2 Max tab for the model) -->
+      <div class="card col-4">
+        <div class="card-title">
+          <span>VO₂ Max (estimated)</span>
+          <span style="font-size: 11px; color: var(--text-muted);">OUR MODEL</span>
+        </div>
+        <div style="margin: 6px 0 4px;">
+          <span style="font-size: 40px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums;" id="ovVo2">—</span>
+          <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">ml/kg/min</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);" id="ovVo2Note">Load data to estimate</div>
+        <svg class="spark" id="vo2Spark" viewBox="0 0 240 28" preserveAspectRatio="none"></svg>
+        <div class="metric-sublist">
+          <div class="submetric-item">
+            <span class="submetric-val" id="ovFitAge">—</span>
+            <span class="submetric-lbl">Fitness age</span>
+          </div>
+          <div class="submetric-item">
+            <span class="submetric-val" id="ovVo2Pct">—</span>
+            <span class="submetric-lbl">Age/sex percentile</span>
+          </div>
+        </div>
+      </div>
+
       <!-- HEALTH MONITOR VITALS -->
-      <div class="card col-6">
+      <div class="card col-8">
         <div class="card-title">
           <span>Health Monitor Vitals</span>
-          <span style="font-size: 11px; color: var(--vitals-cyan);">LATEST READING</span>
+          <span style="font-size: 11px; color: var(--text-muted);">LATEST READING</span>
         </div>
         <div class="vitals-grid">
-          <div class="vital-box" style="border-left-color: var(--recovery-green);">
+          <div class="vital-box" style="border-left-color: var(--series-red);">
             <div class="vital-name">Resting Heart Rate</div>
             <div class="vital-value" id="vitalRHR">—</div>
             <div class="vital-status" id="vitalRHRs">—</div>
           </div>
-          <div class="vital-box" style="border-left-color: var(--recovery-green);">
+          <div class="vital-box" style="border-left-color: var(--series-aqua);">
             <div class="vital-name">HRV Baseline</div>
             <div class="vital-value" id="vitalHRV">—</div>
             <div class="vital-status" id="vitalHRVs">—</div>
           </div>
-          <div class="vital-box" style="border-left-color: var(--vitals-cyan);">
+          <div class="vital-box" style="border-left-color: var(--series-blue);">
             <div class="vital-name">Blood Oxygen (SpO2)</div>
             <div class="vital-value" id="vitalSpO2">—</div>
             <div class="vital-status" id="vitalSpO2s">—</div>
           </div>
-          <div class="vital-box" style="border-left-color: var(--vitals-cyan);">
+          <div class="vital-box" style="border-left-color: var(--series-yellow);">
             <div class="vital-name">Respiratory Rate</div>
             <div class="vital-value" id="vitalResp">—</div>
             <div class="vital-status" id="vitalResps">—</div>
@@ -402,7 +596,7 @@
       </div>
 
       <!-- WEEKLY DIGEST & ACTIONABLE INSIGHTS -->
-      <div class="card col-6">
+      <div class="card col-12">
         <div class="card-title">
           <span>What's Good vs Wrong</span>
           <span style="font-size: 11px; color: var(--text-muted);">ACTION REPORT</span>
@@ -470,13 +664,83 @@
       <div class="chart-sub" id="sleepStageSub">Deep, REM, Core and Awake minutes per period (parsed from your export).</div>
       <svg class="chart" id="sleepStageChart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
       <div class="legend-row">
-        <div class="legend-item"><div class="legend-dot" style="background:#5e35b1"></div>Deep</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#8e24aa"></div>REM</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#1e88e5"></div>Core</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#607d8b"></div>Unspecified</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#e53935"></div>Awake</div>
+        <div class="legend-item"><div class="legend-dot stage-deep"></div>Deep</div>
+        <div class="legend-item"><div class="legend-dot stage-rem"></div>REM</div>
+        <div class="legend-item"><div class="legend-dot stage-core"></div>Core (incl. unspecified)</div>
+        <div class="legend-item"><div class="legend-dot stage-awake"></div>Awake</div>
       </div>
     </div>
+  </section>
+
+  <!-- ===================== VO2 MAX ===================== -->
+  <section class="section" id="sec-vo2">
+    <div class="chart-card">
+      <div class="hero-row">
+        <div>
+          <div class="hero-figure"><span id="vo2Hero">—</span><span class="hero-unit">ml/kg/min</span></div>
+        </div>
+        <div class="hero-meta">
+          <div class="hero-delta" id="vo2Delta">—</div>
+          <div class="hero-note" id="vo2Tier">Load data to estimate</div>
+        </div>
+      </div>
+      <div class="stat-row" style="margin-top: 18px;">
+        <div class="stat-tile"><div class="k">Fitness age</div><div class="v" id="vo2FitAge">—</div><div class="n" id="vo2FitAgeNote">vs your actual age</div></div>
+        <div class="stat-tile"><div class="k">Percentile</div><div class="v" id="vo2Pct">—</div><div class="n">for your age &amp; sex</div></div>
+        <div class="stat-tile"><div class="k">Category</div><div class="v" id="vo2Cat" style="font-size:20px;">—</div><div class="n">Cooper-style band</div></div>
+        <div class="stat-tile"><div class="k">Estimates used</div><div class="v" id="vo2N">—</div><div class="n" id="vo2NNote">qualifying data points</div></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <h3>VO₂ Max Trend — computed by VibePulse</h3>
+      <div class="chart-sub" id="vo2Sub">28-day rolling median of our own estimate. Load data to see which method was used.</div>
+      <svg class="chart" id="vo2Chart" viewBox="0 0 600 260" preserveAspectRatio="xMidYMid meet"></svg>
+      <div class="legend-row" style="justify-content: space-between; align-items: center;">
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+          <div class="legend-item"><div class="legend-dot" style="background: var(--vo2-accent)"></div>Our estimate</div>
+          <div class="legend-item" id="vo2AppleLegend" style="display:none;"><div class="legend-dot" style="background:transparent; border:1.5px solid var(--text-muted); border-radius:50%;"></div>Apple's own readings</div>
+        </div>
+        <label class="check-row" title="Apple only writes VO2Max occasionally, so these are sparse. They never feed our model — this is a calibration check only.">
+          <input type="checkbox" id="showAppleVo2"> Show Apple's readings <span id="appleVo2Count" style="color:var(--text-muted);"></span>
+        </label>
+      </div>
+      <div id="vo2Calib" style="font-size:12px; color:var(--text-muted); margin-top:8px; display:none;"></div>
+    </div>
+
+    <!-- Profile: needed for HRmax fallback, BMI and the non-exercise model. -->
+    <div class="chart-card">
+      <h3>Profile</h3>
+      <div class="chart-sub" id="profileSub">Read from your export where possible. Anything missing is needed for the fallback models — it stays on this device.</div>
+      <div class="profile-grid">
+        <div class="field">
+          <label for="pfAge">Age</label>
+          <input type="number" id="pfAge" min="10" max="100" step="1" placeholder="—">
+        </div>
+        <div class="field">
+          <label for="pfSex">Biological sex</label>
+          <select id="pfSex">
+            <option value="">—</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="pfHeight">Height (cm)</label>
+          <input type="number" id="pfHeight" min="100" max="230" step="1" placeholder="—">
+        </div>
+        <div class="field">
+          <label for="pfWeight">Weight (kg)</label>
+          <input type="number" id="pfWeight" min="30" max="250" step="0.1" placeholder="—">
+        </div>
+      </div>
+      <div style="font-size:12px; color:var(--text-muted); margin-top:10px;" id="profileSource"></div>
+    </div>
+
+    <details class="disclose" id="vo2Method">
+      <summary>How this number is calculated</summary>
+      <div class="disclose-body" id="vo2MethodBody"></div>
+    </details>
   </section>
 
   <!-- ===================== VITALS ===================== -->
@@ -513,6 +777,11 @@
 
     const SVGNS = 'http://www.w3.org/2000/svg';
     const SLEEP_NEED_H = 8.25;
+
+    // Record types we pull out of export.xml.
+    // HeartRate is the outlier here: it is by far the highest-volume type (samples
+    // seconds apart during a workout), so it is NEVER stored raw — see the
+    // on-the-fly aggregation into DATA.hrDay inside parseHealthXml.
     const INTEREST = new Set([
       'HKQuantityTypeIdentifierHeartRateVariabilitySDNN',
       'HKQuantityTypeIdentifierRestingHeartRate',
@@ -520,11 +789,40 @@
       'HKQuantityTypeIdentifierRespiratoryRate',
       'HKQuantityTypeIdentifierStepCount',
       'HKQuantityTypeIdentifierActiveEnergyBurned',
-      'HKCategoryTypeIdentifierSleepAnalysis'
+      'HKCategoryTypeIdentifierSleepAnalysis',
+      'HKQuantityTypeIdentifierHeartRate',
+      'HKQuantityTypeIdentifierBodyMass',
+      'HKQuantityTypeIdentifierHeight',
+      'HKQuantityTypeIdentifierDistanceWalkingRunning',
+      'HKQuantityTypeIdentifierAppleExerciseTime',
+      'HKQuantityTypeIdentifierSixMinuteWalkTestDistance',
+      'HKQuantityTypeIdentifierHeartRateRecoveryOneMinute',
+      // Parsed for the optional calibration overlay ONLY. This never enters the
+      // VO2 model — the whole point of the model is that Apple writes these too
+      // rarely to plot. See buildVo2Index().
+      'HKQuantityTypeIdentifierVO2Max'
     ]);
+    const HR_TYPE = 'HKQuantityTypeIdentifierHeartRate';
 
     // ---------------- Data model ----------------
-    let DATA = { hrv: [], rhr: [], spo2: [], resp: [], steps: [], energy: [], sleep: [] };
+    function emptyData() {
+      return {
+        hrv: [], rhr: [], spo2: [], resp: [], steps: [], energy: [], sleep: [],
+        hrDay: {},        // date -> {min, max, sum, n}  (aggregated during parse)
+        mass: [],         // kg
+        height: [],       // cm
+        distance: [],     // metres/day
+        exercise: [],     // minutes/day
+        walkTest: [],     // 6-minute walk distance, metres
+        hrRecovery: [],   // 1-minute HR recovery, bpm
+        workouts: [],     // {date, type, minutes, metres, avgHR, maxHR, kcal}
+        appleVo2: []      // overlay only
+      };
+    }
+    let DATA = emptyData();
+    // Age / sex / height / weight. Prefer the export, fall back to user entry.
+    // `source` records where each field came from so the UI can be honest about it.
+    let PROFILE = { age: null, sex: null, heightCm: null, weightKg: null, source: {} };
     let hrvBaseline = 0;
     let hrvBaselineSD = 0;
     let currentTab = 'overview';
@@ -535,6 +833,7 @@
     const IDB_NAME = 'vibepulse-db';
     const IDB_STORE = 'healthData';
     const IDB_KEY = 'historicalData';
+    const IDB_PROFILE_KEY = 'profile';
 
     function openIDB() {
       return new Promise((resolve, reject) => {
@@ -547,40 +846,52 @@
         req.onerror = () => reject(req.error);
       });
     }
-    async function saveToIDB() {
+    async function idbPut(key, value) {
       try {
         const db = await openIDB();
         await new Promise((resolve, reject) => {
           const tx = db.transaction(IDB_STORE, 'readwrite');
-          tx.objectStore(IDB_STORE).put({ data: DATA, savedAt: Date.now() }, IDB_KEY);
+          tx.objectStore(IDB_STORE).put(value, key);
           tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
         });
         db.close();
-      } catch (e) { console.warn('IDB save failed', e); }
+      } catch (e) { console.warn('IDB put failed', key, e); }
     }
-    async function loadFromIDB() {
+    async function idbGet(key) {
       try {
         const db = await openIDB();
         const val = await new Promise((resolve, reject) => {
           const tx = db.transaction(IDB_STORE, 'readonly');
-          const req = tx.objectStore(IDB_STORE).get(IDB_KEY);
+          const req = tx.objectStore(IDB_STORE).get(key);
           req.onsuccess = () => resolve(req.result);
           req.onerror = () => reject(req.error);
         });
         db.close();
-        return val ? val.data : null;
-      } catch (e) { console.warn('IDB load failed', e); return null; }
+        return val;
+      } catch (e) { console.warn('IDB get failed', key, e); return null; }
     }
-    async function clearIDB() {
+    async function idbDelete(key) {
       try {
         const db = await openIDB();
         await new Promise((resolve, reject) => {
           const tx = db.transaction(IDB_STORE, 'readwrite');
-          tx.objectStore(IDB_STORE).delete(IDB_KEY);
+          tx.objectStore(IDB_STORE).delete(key);
           tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
         });
         db.close();
-      } catch (e) { console.warn('IDB clear failed', e); }
+      } catch (e) { console.warn('IDB delete failed', key, e); }
+    }
+
+    async function saveToIDB() { await idbPut(IDB_KEY, { data: DATA, savedAt: Date.now() }); }
+    async function loadFromIDB() { const v = await idbGet(IDB_KEY); return v ? v.data : null; }
+    async function clearIDB() { await idbDelete(IDB_KEY); }
+    // Profile is stored separately so Clear Data can wipe health records without
+    // making the user re-enter their age and sex every time.
+    async function saveProfile() { await idbPut(IDB_PROFILE_KEY, PROFILE); }
+    async function loadProfile() {
+      const v = await idbGet(IDB_PROFILE_KEY);
+      if (v && typeof v === 'object') PROFILE = Object.assign(PROFILE, v);
+      return PROFILE;
     }
 
     function setDataButtons(hasData) {
@@ -628,6 +939,10 @@
       if (rhrVals.length) parts.push('RHR: ' + a(rhrVals.reduce((x, y) => x + y, 0) / rhrVals.length) + 'bpm');
       if (stepVals.length) parts.push('Steps: ' + Math.round(stepVals.reduce((x, y) => x + y, 0) / stepVals.length));
       if (energyVals.length) parts.push('Active: ' + Math.round(energyVals.reduce((x, y) => x + y, 0) / energyVals.length) + 'kcal');
+      // VO2max is a level, not a weekly average — quote the latest estimate and name the tier that
+      // produced it, so a shared digest can't imply more precision than the method has.
+      const v = latestVo2();
+      if (v) parts.push('VO2max: ' + a(v.est) + ' (' + (v.tier === 1 ? 'workout-based' : v.tier === 2 ? 'HR-ratio' : 'estimated') + ')');
       return parts.join(' · ');
     }
     async function copyWeeklyDigest() {
@@ -645,10 +960,13 @@
 
 
     function resetData() {
-      DATA = { hrv: [], rhr: [], spo2: [], resp: [], steps: [], energy: [], sleep: [] };
+      DATA = emptyData();
       hrvBaseline = 0;
       hrvBaselineSD = 0;
       RECOVERY = {};
+      VO2 = {};
+      // PROFILE.source is cleared but user-entered fields survive a reparse — see mergeProfile().
+      PROFILE.source = {};
     }
 
     function sleepStage(v) {
@@ -660,14 +978,40 @@
       return null;
     }
 
+    // ---------------- Unit normalisation ----------------
+    // Apple writes the unit as an attribute and it is NOT fixed per type: mass comes as kg, lb or
+    // st depending on the device locale, height as cm or in, distance as km or mi. The original
+    // parser ignored `unit=` entirely, which was harmless for the first seven types (all
+    // single-unit) but would silently mis-scale BMI and workout speed — i.e. mis-estimate VO2max.
+    const MASS_TO_KG = { kg: 1, g: 0.001, lb: 0.45359237, st: 6.35029318 };
+    const LEN_TO_CM = { cm: 1, m: 100, mm: 0.1, in: 2.54, ft: 30.48 };
+    const DIST_TO_M = { m: 1, km: 1000, cm: 0.01, mi: 1609.344, ft: 0.3048, yd: 0.9144 };
+    function convert(value, unit, table, fallbackKey) {
+      const u = (unit || '').trim().toLowerCase();
+      const k = Object.prototype.hasOwnProperty.call(table, u) ? u : fallbackKey;
+      return value * table[k];
+    }
+
     // ---------------- Parsing ----------------
+    // Hard limits, and why they differ:
+    //  - RECORD_CAP bounds the records we actually *retain* (each one grows an array).
+    //  - HeartRate is deliberately exempt: it is aggregated into DATA.hrDay on the fly, so its
+    //    memory cost is O(days) no matter how many samples arrive. Counting it against RECORD_CAP
+    //    would let a multi-year HR stream exhaust the budget and silently truncate every later
+    //    record of every other type — the exact failure the cap was meant to prevent.
+    //  - SCAN_CAP is the real runaway guard: total <Record> elements examined.
+    const RECORD_CAP = 3000000;
+    const SCAN_CAP = 30000000;
+
     function parseHealthXml(text) {
       showLoader('Parsing Apple Health export.xml...');
       setTimeout(() => {
         resetData();
-        const re = /<Record\b([^>]*)\/?>/g;
-        let m, count = 0;
+        parseMe(text);
+        const re = /<Record\b([^>]*)>/g;
+        let m, count = 0, hrCount = 0, scanned = 0;
         while ((m = re.exec(text)) !== null) {
+          if (++scanned > SCAN_CAP) break;
           const tag = m[1];
           const typeM = tag.match(/type="([^"]+)"/);
           if (!typeM || !INTEREST.has(typeM[1])) continue;
@@ -684,23 +1028,153 @@
             if (!stage) continue;
             const hours = (new Date(endM[1]) - new Date(startM[1])) / 3600000;
             if (hours > 0 && hours < 24) DATA.sleep.push({ date, stage, hours });
+            count++;
+          } else if (type === HR_TYPE) {
+            // Aggregate in place. Never stored raw: a multi-year export holds millions of these.
+            const valM = tag.match(/value="([\d.]+)"/);
+            if (!valM) continue;
+            const v = parseFloat(valM[1]);
+            if (!(v > 20 && v < 250)) continue;   // sensor artifacts
+            const b = DATA.hrDay[date] || (DATA.hrDay[date] = { min: v, max: v, sum: 0, n: 0 });
+            if (v < b.min) b.min = v;
+            if (v > b.max) b.max = v;
+            b.sum += v; b.n++;
+            hrCount++;
+            continue;                             // deliberately not counted against RECORD_CAP
           } else {
             const valM = tag.match(/value="([\d.]+)"/);
             if (!valM) continue;
             let v = parseFloat(valM[1]);
+            const unit = (tag.match(/unit="([^"]+)"/) || [])[1];
             if (type === 'HKQuantityTypeIdentifierOxygenSaturation') v = v < 1 ? v * 100 : v;
-            if (type === 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN') DATA.hrv.push({ date, value: v });
-            else if (type === 'HKQuantityTypeIdentifierRestingHeartRate') DATA.rhr.push({ date, value: v });
-            else if (type === 'HKQuantityTypeIdentifierOxygenSaturation') DATA.spo2.push({ date, value: v });
-            else if (type === 'HKQuantityTypeIdentifierRespiratoryRate') DATA.resp.push({ date, value: v });
-            else if (type === 'HKQuantityTypeIdentifierStepCount') DATA.steps.push({ date, value: v });
-            else if (type === 'HKQuantityTypeIdentifierActiveEnergyBurned') DATA.energy.push({ date, value: v });
+            switch (type) {
+              case 'HKQuantityTypeIdentifierHeartRateVariabilitySDNN': DATA.hrv.push({ date, value: v }); break;
+              case 'HKQuantityTypeIdentifierRestingHeartRate': DATA.rhr.push({ date, value: v }); break;
+              case 'HKQuantityTypeIdentifierOxygenSaturation': DATA.spo2.push({ date, value: v }); break;
+              case 'HKQuantityTypeIdentifierRespiratoryRate': DATA.resp.push({ date, value: v }); break;
+              case 'HKQuantityTypeIdentifierStepCount': DATA.steps.push({ date, value: v }); break;
+              case 'HKQuantityTypeIdentifierActiveEnergyBurned': DATA.energy.push({ date, value: v }); break;
+              case 'HKQuantityTypeIdentifierBodyMass': DATA.mass.push({ date, value: convert(v, unit, MASS_TO_KG, 'kg') }); break;
+              case 'HKQuantityTypeIdentifierHeight': DATA.height.push({ date, value: convert(v, unit, LEN_TO_CM, 'cm') }); break;
+              case 'HKQuantityTypeIdentifierDistanceWalkingRunning': DATA.distance.push({ date, value: convert(v, unit, DIST_TO_M, 'km') }); break;
+              case 'HKQuantityTypeIdentifierAppleExerciseTime': DATA.exercise.push({ date, value: v }); break;
+              case 'HKQuantityTypeIdentifierSixMinuteWalkTestDistance': DATA.walkTest.push({ date, value: convert(v, unit, DIST_TO_M, 'm') }); break;
+              case 'HKQuantityTypeIdentifierHeartRateRecoveryOneMinute': DATA.hrRecovery.push({ date, value: v }); break;
+              // Overlay only. This array is read by the "Show Apple's readings" checkbox and by
+              // nothing else — buildVo2Index() never touches it.
+              case 'HKQuantityTypeIdentifierVO2Max': DATA.appleVo2.push({ date, value: v }); break;
+              default: continue;
+            }
+            count++;
           }
-          count++;
-          if (count > 3000000) break;
+          if (count > RECORD_CAP) break;
         }
-        finalize('✓ Parsed ' + count.toLocaleString() + ' records');
+        parseWorkouts(text);
+        mergeProfile();
+        const bits = ['✓ Parsed ' + count.toLocaleString() + ' records'];
+        if (hrCount) bits.push(hrCount.toLocaleString() + ' HR samples → ' + Object.keys(DATA.hrDay).length + ' days');
+        if (DATA.workouts.length) bits.push(DATA.workouts.length + ' workouts');
+        finalize(bits.join(' · '));
       }, 300);
+    }
+
+    // `<Me>` is a single self-closing element near the top of export.xml.
+    function parseMe(text) {
+      const me = text.match(/<Me\b([^>]*)>/);
+      if (!me) return;
+      const tag = me[1];
+      const dob = (tag.match(/HKCharacteristicTypeIdentifierDateOfBirth="([^"]*)"/) || [])[1];
+      const sex = (tag.match(/HKCharacteristicTypeIdentifierBiologicalSex="([^"]*)"/) || [])[1];
+      if (dob && /^\d{4}-\d{2}-\d{2}/.test(dob)) {
+        const born = new Date(dob.slice(0, 10) + 'T00:00:00');
+        const now = new Date();
+        let age = now.getFullYear() - born.getFullYear();
+        const md = (now.getMonth() - born.getMonth()) || (now.getDate() - born.getDate());
+        if (md < 0) age--;
+        if (age > 0 && age < 120) { PROFILE.age = age; PROFILE.source.age = 'export'; }
+      }
+      if (sex) {
+        if (/Male/i.test(sex)) { PROFILE.sex = 'male'; PROFILE.source.sex = 'export'; }
+        else if (/Female/i.test(sex)) { PROFILE.sex = 'female'; PROFILE.source.sex = 'export'; }
+      }
+    }
+
+    // Workouts carry children, so they need a block regex, and the numbers live in two different
+    // shapes depending on the iOS version that wrote the export: as attributes on <Workout> itself
+    // (older) or as nested <WorkoutStatistics> rows (newer). Read attributes first, statistics as
+    // fallback — never the other way round, or a newer export's rolled-up total wins over the
+    // element's own more specific value.
+    function parseWorkouts(text) {
+      const block = /<Workout\b([^>]*?)(\/>|>([\s\S]*?)<\/Workout>)/g;
+      let m;
+      while ((m = block.exec(text)) !== null) {
+        const tag = m[1];
+        const body = m[3] || '';
+        const start = (tag.match(/startDate="([^"]+)"/) || [])[1];
+        if (!start) continue;
+        const date = start.slice(0, 10);
+        const type = ((tag.match(/workoutActivityType="([^"]+)"/) || [])[1] || '')
+          .replace(/^HKWorkoutActivityType/, '') || 'Workout';
+
+        let minutes = parseFloat((tag.match(/duration="([\d.]+)"/) || [])[1]);
+        const durUnit = (tag.match(/durationUnit="([^"]+)"/) || [])[1];
+        if (isFinite(minutes) && /^s(ec)?/i.test(durUnit || 'min')) minutes = minutes / 60;
+        if (!isFinite(minutes)) {
+          const end = (tag.match(/endDate="([^"]+)"/) || [])[1];
+          if (end) minutes = (new Date(end) - new Date(start)) / 60000;
+        }
+
+        let metres = NaN, kcal = NaN;
+        const dM = tag.match(/totalDistance="([\d.]+)"/);
+        if (dM) metres = convert(parseFloat(dM[1]), (tag.match(/totalDistanceUnit="([^"]+)"/) || [])[1], DIST_TO_M, 'km');
+        const eM = tag.match(/totalEnergyBurned="([\d.]+)"/);
+        if (eM) kcal = parseFloat(eM[1]);
+
+        let avgHR = NaN, maxHR = NaN;
+        const st = /<WorkoutStatistics\b([^>]*)>/g;
+        let s;
+        while ((s = st.exec(body)) !== null) {
+          const a = s[1];
+          const sType = (a.match(/type="([^"]+)"/) || [])[1] || '';
+          const unit = (a.match(/unit="([^"]+)"/) || [])[1];
+          const avg = parseFloat((a.match(/average="([\d.]+)"/) || [])[1]);
+          const max = parseFloat((a.match(/maximum="([\d.]+)"/) || [])[1]);
+          const sum = parseFloat((a.match(/sum="([\d.]+)"/) || [])[1]);
+          if (sType === HR_TYPE) {
+            if (isFinite(avg)) avgHR = avg;
+            if (isFinite(max)) maxHR = max;
+          } else if (sType === 'HKQuantityTypeIdentifierDistanceWalkingRunning' || sType === 'HKQuantityTypeIdentifierDistanceCycling') {
+            if (!isFinite(metres) && isFinite(sum)) metres = convert(sum, unit, DIST_TO_M, 'km');
+          } else if (sType === 'HKQuantityTypeIdentifierActiveEnergyBurned') {
+            if (!isFinite(kcal) && isFinite(sum)) kcal = sum;
+          }
+        }
+        // Fall back to the day's aggregated HR only when the workout itself carries none. Coarse,
+        // but a whole-day mean is still a usable submaximal anchor for a long single session.
+        if (!isFinite(avgHR) && DATA.hrDay[date] && DATA.hrDay[date].n) {
+          const b = DATA.hrDay[date];
+          avgHR = b.sum / b.n; maxHR = isFinite(maxHR) ? maxHR : b.max;
+        }
+        if (!isFinite(minutes) || minutes <= 0) continue;
+        DATA.workouts.push({
+          date, type,
+          minutes: Math.round(minutes * 10) / 10,
+          metres: isFinite(metres) ? Math.round(metres) : null,
+          avgHR: isFinite(avgHR) ? Math.round(avgHR * 10) / 10 : null,
+          maxHR: isFinite(maxHR) ? Math.round(maxHR) : null,
+          kcal: isFinite(kcal) ? Math.round(kcal) : null
+        });
+      }
+    }
+
+    // Fill PROFILE from records where the user hasn't overridden it. `source` records provenance so
+    // the panel can show "from export" vs "you entered this", and so a reparse never silently
+    // overwrites a manual correction.
+    function mergeProfile() {
+      const latest = arr => arr.length ? arr.slice().sort((a, b) => a.date < b.date ? -1 : 1)[arr.length - 1] : null;
+      const w = latest(DATA.mass), h = latest(DATA.height);
+      if (w && PROFILE.source.weightKg !== 'user') { PROFILE.weightKg = Math.round(w.value * 10) / 10; PROFILE.source.weightKg = 'export'; }
+      if (h && PROFILE.source.heightCm !== 'user') { PROFILE.heightCm = Math.round(h.value); PROFILE.source.heightCm = 'export'; }
     }
 
     // ---------------- Aggregation ----------------
@@ -745,11 +1219,13 @@
       const dates = records.map(r => r.date);
       const min = dates.reduce((a, b) => a < b ? a : b);
       const max = dates.reduce((a, b) => a > b ? a : b);
+      // `key` is the raw bucket key (label is the display form) so callers that need to map an
+      // arbitrary date back onto a point index — e.g. the VO2 raw-workout dots — can do so.
       return rangeBuckets(min, max, gran).map(k => {
         const arr = map.get(k);
-        if (!arr) return { label: labelFor(k, gran), value: null };
+        if (!arr) return { key: k, label: labelFor(k, gran), value: null };
         const v = agg === 'sum' ? arr.reduce((a, b) => a + b, 0) : arr.reduce((a, b) => a + b, 0) / arr.length;
-        return { label: labelFor(k, gran), value: v };
+        return { key: k, label: labelFor(k, gran), value: v };
       });
     }
     function buildSleepSeries(gran) {
@@ -787,13 +1263,14 @@
 
     // ---------------- Charts (dependency-free SVG) ----------------
     function el(tag, attrs) { const e = document.createElementNS(SVGNS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
-    function showNoData(svg, msg) { svg.innerHTML = ''; const t = el('text', { x: 300, y: 130, fill: '#94a3b8', 'font-size': 13, 'text-anchor': 'middle' }); t.textContent = msg || 'No data available'; svg.appendChild(t); }
+    function showNoData(svg, msg) { svg.innerHTML = ''; const t = el('text', { x: 300, y: 130, fill: TOKENS['text-muted'], 'font-size': 13, 'text-anchor': 'middle' }); t.textContent = msg || 'No data available'; svg.appendChild(t); }
 
     // ---------------- Chart tooltips (glassmorphic) ----------------
     const CHART_NAMES = {
       hrvChart: 'HRV (SDNN) ms', rhrChart: 'Resting HR bpm', stepsChart: 'Steps',
       energyChart: 'Active Energy kcal', sleepTotalChart: 'Total Sleep h',
-      vHrv: 'HRV (SDNN) ms', vRhr: 'Resting HR bpm', vSpo2: 'SpO2 %', vResp: 'Respiratory Rate rpm'
+      vHrv: 'HRV (SDNN) ms', vRhr: 'Resting HR bpm', vSpo2: 'SpO2 %', vResp: 'Respiratory Rate rpm',
+      vo2Chart: 'VO₂ max ml/kg/min'
     };
     function ensureTooltipEl() {
       let tt = document.getElementById('chartTooltip');
@@ -821,17 +1298,43 @@
       const tt = document.getElementById('chartTooltip'); if (tt) tt.style.display = 'none';
     }
 
+    // Design tokens resolved once from CSS, so the charts and the stylesheet can never drift apart.
+    // SVG presentation attributes accept `var()` in current browsers but not reliably everywhere, so
+    // we read the computed value instead of writing `var(--x)` into an attribute.
+    const TOKENS = (() => {
+      const fallback = {
+        '--series-blue': '#3987e5', '--series-orange': '#d95926', '--series-aqua': '#199e70',
+        '--series-yellow': '#c98500', '--series-magenta': '#d55181', '--series-violet': '#9085e9',
+        '--series-red': '#e66767', '--text-muted': '#94a3b8', '--card-bg': '#12161f',
+        '--status-good': '#0ca30c', '--status-warn': '#fab219', '--status-crit': '#d03b3b',
+        '--ramp-1': '#cde2fb', '--ramp-2': '#9ec5f4', '--ramp-3': '#5598e7', '--ramp-4': '#256abf', '--ramp-5': '#184f95'
+      };
+      const cs = getComputedStyle(document.documentElement);
+      const out = {};
+      Object.keys(fallback).forEach(k => {
+        const v = (cs.getPropertyValue(k) || '').trim();
+        out[k.replace('--', '')] = v || fallback[k];
+      });
+      return out;
+    })();
+
     function lineChart(svg, points, opts = {}) {
       svg.innerHTML = '';
       renderChartLegend(svg, []); // clear first, so the early "no data" returns can't strand one
       if (!points.length) { showNoData(svg); return; }
-      const W = 600, H = 260, padL = 46, padR = 16, padT = 16, padB = 34;
+      const W = 600, H = 260, padL = 46, padT = 16, padB = 34;
+      // Percentile zones ride a scale-legend rail in the right gutter, so that gutter has to be
+      // wide enough for the rail plus its labels. Every other chart keeps the tight default.
+      const padR = opts.hbands ? 62 : 16;
       const plotW = W - padL - padR, plotH = H - padT - padB;
       const prev = opts.compare ? opts.compare.points : null;
       const vals = points.map(p => p.value).filter(v => v != null);
       if (!vals.length) { showNoData(svg); return; }
       // Scale over BOTH series, otherwise the two windows aren't comparable.
-      const scaleVals = prev ? vals.concat(prev.map(p => p.value).filter(v => v != null)) : vals;
+      let scaleVals = prev ? vals.concat(prev.map(p => p.value).filter(v => v != null)) : vals.slice();
+      // Anything drawn on the same axis must be in the scale, or it silently clips.
+      if (opts.extraDots) scaleVals = scaleVals.concat(opts.extraDots.map(d => d.value).filter(v => v != null));
+      if (opts.band && opts.band.lo != null) scaleVals = scaleVals.concat([opts.band.lo, opts.band.hi]);
       let min = opts.min != null ? opts.min : Math.min(...scaleVals);
       let max = opts.max != null ? opts.max : Math.max(...scaleVals);
       if (min === max) { max = min + 1; }
@@ -840,27 +1343,57 @@
       const x = i => padL + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
       const y = v => padT + plotH - ((v - min) / (max - min)) * plotH;
       const yc = v => Math.min(padT + plotH, Math.max(padT, y(v)));
-      const color = opts.color || '#00e676';
+      const color = opts.color || TOKENS['series-blue'];
+      const refColor = TOKENS['series-yellow'];
       const fmt = v => (opts.round ? Math.round(v) : v.toFixed(opts.decimals != null ? opts.decimals : 1)) + (opts.unit || '');
+
+      // Percentile zones as a scale-legend rail in the right gutter — NOT a background wash over the
+      // plot. Measured, not judged by eye: the ordinal ramp passes its own checks only at full
+      // opacity (adjacent ΔL ≥ 0.06, light end 2.23:1 on this surface). Washed across the plot at
+      // the 0.22 alpha a background needs, the five steps composite to #132339…#3b434f — adjacent
+      // ΔL 0.02–0.04 and 1.14:1 contrast, failing both, and on screen neither the bands nor their
+      // boundaries could be told apart. Full opacity in a 7px rail keeps the ramp legal and leaves
+      // the plot to the data; dashed hairlines carry the thresholds across it.
+      if (opts.hbands) {
+        const railX = W - padR + 10, railW = 7;
+        opts.hbands.forEach(b => {
+          const yTop = yc(b.hi), yBot = yc(b.lo);
+          if (yBot - yTop <= 2.5) return;   // zone falls outside the visible domain, or is a sliver
+          // Inset 1px top and bottom so stacked segments keep a 2px surface gap between them.
+          svg.appendChild(el('rect', { x: railX, y: yTop + 1, width: railW, height: yBot - yTop - 2, fill: b.color, rx: 1 }));
+          // The boundary in muted ink rather than the band's own hue: the darkest ramp steps are
+          // invisible as a hairline on this surface, and the rail already carries the identity.
+          if (yTop > padT + 0.5) {
+            svg.appendChild(el('line', {
+              x1: padL, y1: yTop, x2: railX - 3, y2: yTop,
+              stroke: TOKENS['text-muted'], 'stroke-width': 1, 'stroke-dasharray': '2 4', opacity: 0.3
+            }));
+          }
+          if (b.label && yBot - yTop > 11) {
+            const t = el('text', { x: railX + railW + 4, y: (yTop + yBot) / 2 + 3, fill: TOKENS['text-muted'], 'font-size': 9 });
+            t.textContent = b.label; svg.appendChild(t);
+          }
+        });
+      }
 
       // ±1 SD band behind everything, clamped to the plot so an out-of-range band can't overflow.
       if (opts.band && opts.band.lo != null && opts.band.hi != null && opts.band.hi > opts.band.lo) {
         const yTop = yc(opts.band.hi), yBot = yc(opts.band.lo);
         if (yBot > yTop) {
-          svg.appendChild(el('rect', { x: padL, y: yTop, width: plotW, height: yBot - yTop, fill: '#ffea00', opacity: 0.07 }));
+          svg.appendChild(el('rect', { x: padL, y: yTop, width: plotW, height: yBot - yTop, fill: opts.bandColor || refColor, opacity: 0.10 }));
         }
       }
 
       for (let t = 0; t <= 4; t++) {
         const v = min + (max - min) * (t / 4), yy = y(v);
         svg.appendChild(el('line', { x1: padL, y1: yy, x2: W - padR, y2: yy, stroke: 'rgba(255,255,255,0.06)', 'stroke-width': 1 }));
-        const tx = el('text', { x: padL - 6, y: yy + 3, fill: '#94a3b8', 'font-size': 10, 'text-anchor': 'end' });
+        const tx = el('text', { x: padL - 6, y: yy + 3, fill: TOKENS['text-muted'], 'font-size': 10, 'text-anchor': 'end' });
         tx.textContent = (opts.round ? Math.round(v) : v.toFixed(opts.decimals != null ? opts.decimals : 0)) + (opts.unit || '');
         svg.appendChild(tx);
       }
       if (opts.baseline != null) {
         const by = y(opts.baseline);
-        svg.appendChild(el('line', { x1: padL, y1: by, x2: W - padR, y2: by, stroke: '#ffea00', 'stroke-width': 1.2, 'stroke-dasharray': '5 4', opacity: 0.7 }));
+        svg.appendChild(el('line', { x1: padL, y1: by, x2: W - padR, y2: by, stroke: refColor, 'stroke-width': 1.2, 'stroke-dasharray': '5 4', opacity: 0.8 }));
       }
       // Split a series into null-free runs of indices so gaps stay gaps.
       const runs = (arr) => {
@@ -882,19 +1415,51 @@
       }
       // segments (skip nulls)
       const segs = runs(points);
+      const animate = opts.draw !== false && !prefersReducedMotion();
       segs.forEach(seg => {
         let path = ''; seg.forEach((i, k) => { path += (k === 0 ? 'M' : 'L') + x(i) + ' ' + y(points[i].value) + ' '; });
-        svg.appendChild(el('path', { d: path, fill: 'none', stroke: color, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'data-series': 'current' }));
+        const line = el('path', { d: path, fill: 'none', stroke: color, 'stroke-width': 2.5, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'data-series': 'current' });
+        // Draw-in: set the dash pattern to the path's own length and animate the offset to zero.
+        // getTotalLength() needs the node in the document, so class it after append.
+        svg.appendChild(line);
+        if (animate) {
+          try {
+            const len = line.getTotalLength();
+            if (len > 0) {
+              line.style.strokeDasharray = len;
+              line.style.setProperty('--len', len);
+              line.classList.add('draw');
+            }
+          } catch (e) { /* getTotalLength unsupported: the line simply appears */ }
+        }
         const first = seg[0], last = seg[seg.length - 1];
         let ap = 'M' + x(first) + ' ' + y(points[first].value) + ' ';
         seg.forEach(i => { ap += 'L' + x(i) + ' ' + y(points[i].value) + ' '; });
         ap += 'L' + x(last) + ' ' + (padT + plotH) + ' L' + x(first) + ' ' + (padT + plotH) + ' Z';
         svg.insertBefore(el('path', { d: ap, fill: color, opacity: 0.12 }), svg.firstChild);
-        seg.forEach(i => svg.appendChild(el('circle', { cx: x(i), cy: y(points[i].value), r: 2.4, fill: color })));
+        if (!opts.hideDots) seg.forEach(i => svg.appendChild(el('circle', { cx: x(i), cy: y(points[i].value), r: 2.4, fill: color })));
       });
+
+      // Extra marks on the same axis — raw per-workout estimates, or Apple's own sparse readings as
+      // hollow circles. `i` is a (possibly fractional) index into `points`.
+      if (opts.extraDots) {
+        opts.extraDots.forEach(d => {
+          if (d.value == null || d.i == null) return;
+          const cx = padL + (n <= 1 ? plotW / 2 : (clamp(d.i, 0, n - 1) / (n - 1)) * plotW);
+          if (d.hollow) {
+            svg.appendChild(el('circle', {
+              cx, cy: yc(d.value), r: 4, fill: 'none',
+              stroke: d.color || TOKENS['text-muted'], 'stroke-width': 1.5
+            }));
+          } else {
+            svg.appendChild(el('circle', { cx, cy: yc(d.value), r: 2.2, fill: d.color || color, opacity: d.opacity != null ? d.opacity : 0.35 }));
+          }
+        });
+      }
+
       // Interactive tooltip layer
       const cross = el('line', { x1: 0, y1: padT, x2: 0, y2: padT + plotH, stroke: color, 'stroke-width': 1, 'stroke-dasharray': '4 4', opacity: 0 });
-      const hi = el('circle', { cx: 0, cy: 0, r: 5, fill: color, stroke: '#0b0e14', 'stroke-width': 2, opacity: 0 });
+      const hi = el('circle', { cx: 0, cy: 0, r: 5, fill: color, stroke: TOKENS['card-bg'], 'stroke-width': 2, opacity: 0 });
       svg.appendChild(cross); svg.appendChild(hi);
       const overlay = el('rect', { x: padL, y: padT, width: plotW, height: plotH, fill: 'transparent' });
       overlay.style.cursor = 'crosshair';
@@ -910,6 +1475,7 @@
         hi.setAttribute('cx', x(nearest)); hi.setAttribute('cy', y(p.value)); hi.setAttribute('opacity', 1);
         const label = opts.name || CHART_NAMES[svg.id] || 'Value';
         const rows = [{ name: label, value: fmt(p.value), color }];
+        if (opts.extraRows) { (opts.extraRows(points[nearest], nearest) || []).forEach(r => rows.push(r)); }
         if (prev) {
           const q = prev[nearest];
           // The previous bucket carries its own label so "06/13 vs 06/06" is legible.
@@ -926,7 +1492,7 @@
 
       const step = Math.ceil(n / 7);
       for (let i = 0; i < n; i += step) {
-        const tx = el('text', { x: x(i), y: H - 12, fill: '#94a3b8', 'font-size': 9, 'text-anchor': 'middle' });
+        const tx = el('text', { x: x(i), y: H - 12, fill: TOKENS['text-muted'], 'font-size': 9, 'text-anchor': 'middle' });
         tx.textContent = points[i].label; svg.appendChild(tx);
       }
 
@@ -935,7 +1501,7 @@
         legend.push({ name: opts.compare.currentName || 'Current', color });
         legend.push({ name: opts.compare.name || 'Previous', color, dashed: true });
       }
-      if (opts.band && opts.band.lo != null) legend.push({ name: 'Baseline ±1 SD', color: '#ffea00' });
+      if (opts.band && opts.band.lo != null) legend.push({ name: opts.bandName || 'Baseline ±1 SD', color: opts.bandColor || refColor });
       renderChartLegend(svg, legend);
     }
 
@@ -969,11 +1535,24 @@
       if (!n) { showNoData(svg); return; }
       const W = 600, H = 260, padL = 46, padR = 16, padT = 16, padB = 34;
       const plotW = W - padL - padR, plotH = H - padT - padB;
-      const totals = labels.map((_, i) => stages.core[i] + stages.deep[i] + stages.rem[i] + stages.unspec[i] + stages.awake[i]);
+      // Display merge: Apple's AsleepUnspecified means "asleep, stage unknown", so it belongs with
+      // Core rather than in a slot of its own. Every 5-colour candidate for this stack failed the
+      // palette validator on that fifth slot — a neutral grey reads as no-data and lands ~14 ΔE from
+      // its neighbours against a floor of 15. DATA.sleep keeps `unspec`, so sleepScore01's
+      // restorative fraction is unaffected; this is presentation only.
+      const merged = {
+        deep: stages.deep,
+        rem: stages.rem,
+        core: labels.map((_, i) => stages.core[i] + stages.unspec[i]),
+        awake: stages.awake
+      };
+      const totals = labels.map((_, i) => merged.core[i] + merged.deep[i] + merged.rem[i] + merged.awake[i]);
       const max = Math.max(...totals, 1) * 1.1;
       const y = v => padT + plotH - (v / max) * plotH;
-      const colors = { deep: '#5e35b1', rem: '#8e24aa', core: '#1e88e5', unspec: '#607d8b', awake: '#e53935' };
-      const order = ['deep', 'rem', 'core', 'unspec', 'awake'];
+      // Validated 4-slot set: violet / magenta / blue / red. All six checks pass on the card surface.
+      const colors = { deep: '#9085e9', rem: '#d55181', core: '#3987e5', awake: '#e66767' };
+      const order = ['deep', 'rem', 'core', 'awake'];
+      const GAP = 2;   // surface gap between stacked segments, per the mark spec
       for (let t = 0; t <= 4; t++) {
         const v = max * (t / 4), yy = y(v);
         svg.appendChild(el('line', { x1: padL, y1: yy, x2: W - padR, y2: yy, stroke: 'rgba(255,255,255,0.06)' }));
@@ -985,9 +1564,12 @@
         const x0 = padL + i * slot + (slot - bw) / 2;
         let acc = 0;
         order.forEach(st => {
-          const val = stages[st][i];
+          const val = merged[st][i];
           if (val > 0.01) {
-            const yy = y(acc + val), h = y(acc) - y(acc + val);
+            const yy = y(acc + val), full = y(acc) - y(acc + val);
+            // Shrink each segment by the gap rather than overlapping the next one, so the surface
+            // shows through and adjacent stages never touch.
+            const h = Math.max(1, full - GAP);
             svg.appendChild(el('rect', { x: x0, y: yy, width: bw, height: h, fill: colors[st], rx: 1 }));
             acc += val;
           }
@@ -998,7 +1580,7 @@
       // Interactive tooltip layer
       const bOverlay = el('rect', { x: padL, y: padT, width: plotW, height: plotH, fill: 'transparent' });
       bOverlay.style.cursor = 'pointer';
-      const stageNames = { deep: 'Deep', rem: 'REM', core: 'Core', unspec: 'Unspecified', awake: 'Awake' };
+      const stageNames = { deep: 'Deep', rem: 'REM', core: 'Core', awake: 'Awake' };
       bOverlay.addEventListener('pointermove', (ev) => {
         const rect = svg.getBoundingClientRect();
         if (!rect.width) { hideChartTooltip(); return; }
@@ -1006,7 +1588,7 @@
         let i = Math.floor((sx - padL) / slot);
         if (i < 0) i = 0; if (i >= n) i = n - 1;
         const rows = [];
-        order.forEach(st => { const v = stages[st][i]; if (v > 0.01) rows.push({ name: stageNames[st], value: v.toFixed(1) + 'h', color: colors[st] }); });
+        order.forEach(st => { const v = merged[st][i]; if (v > 0.01) rows.push({ name: stageNames[st], value: v.toFixed(1) + 'h', color: colors[st] }); });
         if (!rows.length) { hideChartTooltip(); return; }
         showChartTooltip({ label: labels[i], rows }, ev.clientX, ev.clientY);
       });
@@ -1015,15 +1597,124 @@
 
     }
 
+    // ---------------- Sparklines ----------------
+    // A stat tile's job is "current value + where it's been", so the tile carries a sparkline rather
+    // than a second full chart. No axes, no labels, no tooltip: it is context, not a readable plot.
+    function sparkline(id, values, color) {
+      const svg = document.getElementById(id);
+      if (!svg) return;
+      svg.innerHTML = '';
+      const vals = (values || []).filter(v => v != null && isFinite(v));
+      if (vals.length < 2) return;
+      const W = 240, H = 28, pad = 3;
+      const min = Math.min(...vals), max = Math.max(...vals);
+      const span = (max - min) || 1;
+      const x = i => pad + (i / (vals.length - 1)) * (W - pad * 2);
+      const y = v => H - pad - ((v - min) / span) * (H - pad * 2);
+      let d = '';
+      vals.forEach((v, i) => { d += (i === 0 ? 'M' : 'L') + x(i).toFixed(1) + ' ' + y(v).toFixed(1) + ' '; });
+      const area = d + 'L' + x(vals.length - 1).toFixed(1) + ' ' + H + ' L' + pad + ' ' + H + ' Z';
+      svg.appendChild(el('path', { d: area, fill: color, opacity: 0.14 }));
+      const line = el('path', { d, fill: 'none', stroke: color, 'stroke-width': 1.6, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' });
+      line.setAttribute('vector-effect', 'non-scaling-stroke');
+      svg.appendChild(line);
+      svg.appendChild(el('circle', { cx: x(vals.length - 1), cy: y(vals[vals.length - 1]), r: 2, fill: color }));
+    }
+
+    // ---------------- Count-up ----------------
+    // Animates a headline number from its current reading to the new one. Bails to a plain write
+    // under reduced-motion, and cancels any in-flight animation on the same element so two rapid
+    // updates can't fight over the text node.
+    const countTimers = new Map();
+    function countUp(id, target, opts = {}) {
+      const node = document.getElementById(id);
+      if (!node) return;
+      const dec = opts.decimals || 0;
+      const suffix = opts.suffix || '';
+      const fmt = v => (opts.thousands ? Math.round(v).toLocaleString() : v.toFixed(dec)) + suffix;
+      if (countTimers.has(id)) { cancelAnimationFrame(countTimers.get(id)); countTimers.delete(id); }
+      if (target == null || !isFinite(target)) { node.textContent = '—'; return; }
+      if (prefersReducedMotion()) { node.textContent = fmt(target); return; }
+      const from = parseFloat(String(node.textContent).replace(/[^\d.\-]/g, ''));
+      const start = isFinite(from) ? from : 0;
+      if (Math.abs(target - start) < Math.pow(10, -dec)) { node.textContent = fmt(target); return; }
+      const dur = 700, t0 = performance.now();
+      const finish = () => {
+        if (!countTimers.has(id)) return;
+        cancelAnimationFrame(countTimers.get(id));
+        countTimers.delete(id);
+        node.textContent = fmt(target);
+      };
+      const step = now => {
+        const p = Math.min(1, (now - t0) / dur);
+        const e = 1 - Math.pow(1 - p, 3);                       // ease-out cubic
+        node.textContent = fmt(start + (target - start) * e);
+        if (p < 1) countTimers.set(id, requestAnimationFrame(step));
+        else { node.textContent = fmt(target); countTimers.delete(id); }
+      };
+      countTimers.set(id, requestAnimationFrame(step));
+      // rAF never fires while the page isn't painting, which would leave the old text on screen
+      // indefinitely. A timer can't be starved the same way, so it backstops the final value.
+      setTimeout(finish, dur + 150);
+    }
+
+    // ---------------- Recovery-driven accent ----------------
+    // The single change that makes the app feel like it is reacting to you: today's readiness band
+    // drives --accent, so buttons, the active tab and the ring all shift with it.
+    function setAccentFromRecovery(score) {
+      const root = document.body;
+      if (score == null) {
+        root.style.removeProperty('--accent');
+        root.style.removeProperty('--accent-soft');
+        return;
+      }
+      const c = recCategory(score);
+      root.style.setProperty('--accent', c.color);
+      root.style.setProperty('--accent-soft', c.soft);
+    }
+
+    // Staggered card entrance. Applied once per element — re-adding the class on every render would
+    // replay the animation on each tab switch, which reads as a glitch rather than as motion.
+    function playEntrance() {
+      if (prefersReducedMotion()) return;
+      document.querySelectorAll('.card, .chart-card').forEach(n => {
+        if (!n.dataset.entered) { n.dataset.entered = '1'; n.classList.add('enter'); }
+      });
+    }
+
     // ---------------- Gauge ----------------
+    // The stroke-dashoffset transition lives in CSS (.gauge-fill). A transition only fires when the
+    // property *changes*, so on the very first paint we must plant the empty state (offset ===
+    // circumference), let the browser commit one frame, and only then set the target — otherwise
+    // the ring appears already full and nothing sweeps.
+    const gaugePainted = new Set();
     function updateGauge(circleId, score, maxScore = 100, color = null) {
       const circle = document.getElementById(circleId);
+      if (!circle) return;
       const radius = circle.r.baseVal.value;
       const circumference = 2 * Math.PI * radius;
       circle.style.strokeDasharray = `${circumference} ${circumference}`;
-      const offset = circumference - (Math.min(score, maxScore) / maxScore) * circumference;
-      circle.style.strokeDashoffset = offset;
       if (color) circle.style.stroke = color;
+      const offset = circumference - (clamp(score, 0, maxScore) / maxScore) * circumference;
+      // A score of 0 leaves the ring empty, which is where the sweep starts from anyway — so don't
+      // count it as painted, or the init call would rob the first real value of its animation.
+      const painted = score > 0;
+      if (gaugePainted.has(circleId) || prefersReducedMotion()) {
+        circle.style.strokeDashoffset = offset;
+        if (painted) gaugePainted.add(circleId);
+        return;
+      }
+      circle.style.strokeDashoffset = circumference;
+      if (!painted) return;
+      gaugePainted.add(circleId);
+      // Force a style flush so the browser commits the empty ring as the transition's start value.
+      // A double requestAnimationFrame reads more idiomatically but rAF is starved whenever the page
+      // isn't painting (backgrounded tab, prerender), which left the ring stuck at empty — measured.
+      void circle.getBoundingClientRect();
+      circle.style.strokeDashoffset = offset;
+    }
+    function prefersReducedMotion() {
+      return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 
     function recoveryFromHrv(hrv, rhr) {
@@ -1031,10 +1722,13 @@
       const rhrScore = Math.min(100, Math.max(20, (60 / rhr) * 85));
       return Math.round(hrvScore * 0.65 + rhrScore * 0.35);
     }
+    // Status tokens, not the old neon set: these are the validated good/warning/critical steps and
+    // they all clear 3:1 on the card surface. `state` names the dot class so the label itself can
+    // stay in text ink — a colour must never be the only carrier of the band.
     function recCategory(score) {
-      if (score >= 67) return { cat: 'OPTIMAL', color: '#00e676' };
-      if (score >= 34) return { cat: 'MODERATE', color: '#ffea00' };
-      return { cat: 'LOW / REST', color: '#ff1744' };
+      if (score >= 67) return { cat: 'OPTIMAL', color: 'var(--status-good)', state: 'state-good', soft: 'rgba(12,163,12,.14)' };
+      if (score >= 34) return { cat: 'MODERATE', color: 'var(--status-warn)', state: 'state-warn', soft: 'rgba(250,178,25,.14)' };
+      return { cat: 'LOW / REST', color: 'var(--status-crit)', state: 'state-crit', soft: 'rgba(208,59,59,.16)' };
     }
 
     // ---------------- Recovery readiness model ----------------
@@ -1144,6 +1838,278 @@
       ).join(' · ');
     }
 
+    // ================= VO2max model =================
+    // We estimate VO2max ourselves rather than reading HKQuantityTypeIdentifierVO2Max, because Apple
+    // only writes that record during an outdoor walk/run with the watch on — a year of data is a
+    // handful of dots. DATA.appleVo2 is parsed but used ONLY for the optional overlay; nothing in
+    // this section reads it.
+    //
+    // Three tiers, best available wins, and the tier is always reported to the UI (same contract as
+    // RECOVERY's `mode`) so a number is never presented as more certain than it is.
+    //
+    // !! UNVERIFIED CONSTANT !!
+    // Age/sex median VO2max (ml/kg/min), Cooper-Institute-style bands. These values are from
+    // background knowledge and could NOT be checked against a primary source while this was written
+    // (no network access to the Cooper Institute / ACSM tables). They affect ONLY the derived
+    // percentile, category and fitness age — never the estimate itself. To correct them, replace
+    // this table against ACSM's Guidelines for Exercise Testing and Prescription, Table 4.7
+    // (cardiorespiratory fitness percentiles by age and sex); the rest of the model is untouched.
+    const VO2_NORMS = {
+      male:   [{ age: 25, p: [30, 37, 42, 47, 56] }, { age: 35, p: [28, 34, 39, 44, 52] },
+               { age: 45, p: [25, 31, 36, 41, 48] }, { age: 55, p: [22, 28, 32, 37, 44] },
+               { age: 65, p: [20, 25, 29, 33, 39] }],
+      female: [{ age: 25, p: [25, 31, 36, 41, 49] }, { age: 35, p: [23, 29, 34, 38, 45] },
+               { age: 45, p: [21, 26, 31, 35, 41] }, { age: 55, p: [19, 24, 28, 32, 37] },
+               { age: 65, p: [17, 21, 25, 29, 34] }]
+    };
+    const VO2_PCT_STOPS = [10, 30, 50, 70, 90];              // percentile each column represents
+    const VO2_CATS = ['Very poor', 'Poor', 'Fair', 'Good', 'Excellent', 'Superior'];
+    const VO2_WINDOW = 28;        // days of trailing workouts pooled for one daily estimate
+    const VO2_MIN_TIER1 = 3;      // qualifying workouts needed before we trust the direct method
+    const JACKSON_SEE = 5.35;     // published standard error of estimate → the band width we show
+    let VO2 = {};
+    let vo2Meta = { hrMax: null, hrMaxSource: null, tier1Count: 0, tier: null };
+
+    function percentileOf(sortedAsc, q) {
+      if (!sortedAsc.length) return null;
+      const i = (sortedAsc.length - 1) * q;
+      const lo = Math.floor(i), hi = Math.ceil(i);
+      return lo === hi ? sortedAsc[lo] : sortedAsc[lo] + (sortedAsc[hi] - sortedAsc[lo]) * (i - lo);
+    }
+    function median(arr) {
+      if (!arr.length) return null;
+      return percentileOf(arr.slice().sort((a, b) => a - b), 0.5);
+    }
+
+    // Observed HRmax beats any age formula, but a raw max is exactly what a single sensor artifact
+    // poisons — one 240 bpm blip would inflate the reserve and depress every tier-1 estimate for a
+    // year. Two defences, because the first one alone was measurably not enough.
+    function estimateHrMax(upToDate) {
+      const cutoff = new Date(upToDate + 'T00:00:00');
+      cutoff.setDate(cutoff.getDate() - 365);
+      const from = ymd(cutoff);
+      const maxima = [];
+      // 1. Physiological plausibility, per sample. A human daily maximum outside this band is a
+      //    contact/motion artifact, not a heart rate, so it never enters the statistic at all.
+      const push = v => { if (v >= 90 && v <= 220) maxima.push(v); };
+      Object.keys(DATA.hrDay).forEach(d => {
+        if (d > from && d <= upToDate && DATA.hrDay[d].max > 0) push(DATA.hrDay[d].max);
+      });
+      DATA.workouts.forEach(w => { if (w.date > from && w.date <= upToDate && w.maxHR) push(w.maxHR); });
+      if (maxima.length >= 20) {
+        // 2. Median of the top decile — NOT the 99th percentile. p99 is the obvious choice and it is
+        //    wrong here: at a realistic sample size (~60 days of history) index 0.99×(n−1) lands on
+        //    the very top of the sorted array, so a single bad day leaks straight into the answer.
+        //    Measured on a synthetic year: one 240 bpm artifact moved HRmax 170 → 194 and the
+        //    resulting VO2max 43.6 → 51.7. The median of the top 10% has a 5% breakdown point —
+        //    several bad days can all sit above it without moving it — while still reading the top
+        //    of the real distribution rather than its middle.
+        const sorted = maxima.slice().sort((a, b) => a - b);
+        const top = sorted.slice(-Math.max(5, Math.ceil(sorted.length * 0.1)));
+        const v = median(top);
+        if (v >= 120 && v <= 220) return { value: v, source: 'observed' };
+      }
+      if (PROFILE.age) return { value: 208 - 0.7 * PROFILE.age, source: 'tanaka' };   // Tanaka et al. 2001
+      return null;
+    }
+
+    // Tier 1 — submaximal HR/speed extrapolation, per workout.
+    //   ACSM metabolic equations give the VO2 cost of the pace actually held; the HR-reserve
+    //   fraction says what share of capacity that cost consumed; dividing extrapolates to 100%.
+    //   Every gate failure DISCARDS the workout rather than clamping it — a clamped bad input still
+    //   biases the median, a dropped one doesn't.
+    function tier1FromWorkout(w, rhr, hrMax) {
+      if (!w || !hrMax || rhr == null) return null;
+      if (!(w.minutes >= 8)) return null;
+      if (!(w.metres > 0)) return null;
+      if (w.avgHR == null) return null;
+      if (!(hrMax - rhr > 20)) return null;
+      const speed = w.metres / w.minutes;                       // m/min
+      if (!(speed >= 40 && speed <= 400)) return null;           // 2.4–24 km/h; outside is bad GPS
+      const vo2eff = speed >= 134 ? 0.2 * speed + 3.5            // ACSM running
+                                  : 0.1 * speed + 3.5;           // ACSM walking
+      const f = (w.avgHR - rhr) / (hrMax - rhr);                 // HR-reserve fraction
+      if (!(f >= 0.40 && f <= 0.95)) return null;
+      const est = 3.5 + (vo2eff - 3.5) / f;                      // HRR ∝ VO2R
+      if (!(est >= 15 && est <= 85)) return null;
+      return { est, f, speed, date: w.date, type: w.type, minutes: w.minutes };
+    }
+
+    // Tier 2 — Uth–Sørensen (2004): VO2max ≈ 15.3 × HRmax/RHR. Needs no workouts at all, which is
+    // most users.
+    function tier2(rhr, hrMax) {
+      if (!rhr || !hrMax) return null;
+      const est = 15.3 * hrMax / rhr;
+      return (est >= 15 && est <= 85) ? est : null;
+    }
+
+    // Tier 3 — Jackson non-exercise model (1990). Last resort: needs only age, sex, BMI and a
+    // self-reported-style activity rating, which we derive from exercise minutes and step volume.
+    function activityRating(exerciseMin, steps) {
+      // 0–7 scale approximating the NASA/Jackson PA-R ladder.
+      const m = exerciseMin || 0, s = steps || 0;
+      if (m >= 60 || s >= 15000) return 7;
+      if (m >= 45 || s >= 12000) return 6;
+      if (m >= 30 || s >= 10000) return 5;
+      if (m >= 20 || s >= 8000) return 4;
+      if (m >= 10 || s >= 6000) return 3;
+      if (m >= 5 || s >= 4000) return 2;
+      if (s >= 2000) return 1;
+      return 0;
+    }
+    function tier3(par) {
+      const { age, sex, heightCm, weightKg } = PROFILE;
+      if (!age || !sex || !heightCm || !weightKg) return null;
+      const bmi = weightKg / Math.pow(heightCm / 100, 2);
+      if (!(bmi > 10 && bmi < 60)) return null;
+      const est = 56.363 + 1.921 * par - 0.381 * age - 0.754 * bmi + 10.987 * (sex === 'male' ? 1 : 0);
+      return (est >= 15 && est <= 85) ? est : null;
+    }
+
+    function buildVo2Index() {
+      VO2 = {};
+      vo2Meta = { hrMax: null, hrMaxSource: null, tier1Count: 0, tier: null };
+      const byDay = (rows, agg) => {
+        const m = {};
+        rows.forEach(r => { (m[r.date] || (m[r.date] = [])).push(r.value); });
+        const out = {};
+        Object.keys(m).forEach(d => {
+          out[d] = agg === 'sum' ? m[d].reduce((a, b) => a + b, 0) : m[d].reduce((a, b) => a + b, 0) / m[d].length;
+        });
+        return out;
+      };
+      const rhrByDay = byDay(DATA.rhr, 'avg');
+      const stepsByDay = byDay(DATA.steps, 'sum');
+      const exByDay = byDay(DATA.exercise, 'sum');
+
+      const days = [...new Set([
+        ...Object.keys(rhrByDay), ...Object.keys(stepsByDay),
+        ...DATA.workouts.map(w => w.date)
+      ])].sort();
+      if (!days.length) return;
+
+      const hm = estimateHrMax(days[days.length - 1]);
+      if (hm) { vo2Meta.hrMax = hm.value; vo2Meta.hrMaxSource = hm.source; }
+
+      const workoutsByDay = {};
+      DATA.workouts.forEach(w => { (workoutsByDay[w.date] || (workoutsByDay[w.date] = [])).push(w); });
+
+      // Trailing RHR mean smooths the tier-1 denominator: a single noisy RHR reading would otherwise
+      // move the whole day's estimate.
+      const rhrTrail = [];
+      const tier1All = [];
+
+      days.forEach(d => {
+        const rhr = rhrByDay[d];
+        if (rhr != null) { rhrTrail.push(rhr); if (rhrTrail.length > 30) rhrTrail.shift(); }
+        const rhrRef = rhrTrail.length ? rhrTrail.reduce((a, b) => a + b, 0) / rhrTrail.length : null;
+
+        (workoutsByDay[d] || []).forEach(w => {
+          const t1 = tier1FromWorkout(w, rhrRef, vo2Meta.hrMax);
+          if (t1) tier1All.push(t1);
+        });
+
+        // Pool the trailing window's tier-1 results.
+        const cutoff = new Date(d + 'T00:00:00');
+        cutoff.setDate(cutoff.getDate() - VO2_WINDOW);
+        const from = ymd(cutoff);
+        const win = tier1All.filter(t => t.date > from && t.date <= d);
+
+        let est = null, tier = null, band = null, n = win.length;
+        if (win.length >= VO2_MIN_TIER1) {
+          const vals = win.map(t => t.est).sort((a, b) => a - b);
+          est = percentileOf(vals, 0.5);
+          tier = 1;
+          band = [percentileOf(vals, 0.25), percentileOf(vals, 0.75)];
+        } else {
+          const t2 = tier2(rhrRef, vo2Meta.hrMax);
+          if (t2 != null) { est = t2; tier = 2; band = [t2 - 3.5, t2 + 3.5]; }
+          else {
+            const par = activityRating(exByDay[d], stepsByDay[d]);
+            const t3 = tier3(par);
+            if (t3 != null) { est = t3; tier = 3; band = [t3 - JACKSON_SEE, t3 + JACKSON_SEE]; }
+          }
+        }
+        if (est != null) {
+          VO2[d] = { est: Math.round(est * 10) / 10, tier, n, band: band ? [Math.round(band[0] * 10) / 10, Math.round(band[1] * 10) / 10] : null };
+        }
+      });
+      vo2Meta.tier1Count = tier1All.length;
+      vo2Meta.raw = tier1All;
+      const keys = Object.keys(VO2).sort();
+      vo2Meta.tier = keys.length ? VO2[keys[keys.length - 1]].tier : null;
+    }
+
+    function latestVo2() {
+      const keys = Object.keys(VO2).sort();
+      return keys.length ? { date: keys[keys.length - 1], ...VO2[keys[keys.length - 1]] } : null;
+    }
+
+    // Linear interpolation across the norm table's age rows, then across its percentile columns.
+    function vo2NormRow(sex, age) {
+      const rows = VO2_NORMS[sex === 'female' ? 'female' : 'male'];
+      if (age <= rows[0].age) return rows[0].p.slice();
+      if (age >= rows[rows.length - 1].age) return rows[rows.length - 1].p.slice();
+      for (let i = 1; i < rows.length; i++) {
+        if (age <= rows[i].age) {
+          const a = rows[i - 1], b = rows[i];
+          const t = (age - a.age) / (b.age - a.age);
+          return a.p.map((v, j) => v + (b.p[j] - v) * t);
+        }
+      }
+      return rows[rows.length - 1].p.slice();
+    }
+    function vo2Percentile(est, sex, age) {
+      if (est == null || !sex || !age) return null;
+      const p = vo2NormRow(sex, age);
+      if (est <= p[0]) return Math.max(1, Math.round(VO2_PCT_STOPS[0] * est / p[0]));
+      for (let i = 1; i < p.length; i++) {
+        if (est <= p[i]) {
+          const t = (est - p[i - 1]) / (p[i] - p[i - 1]);
+          return Math.round(VO2_PCT_STOPS[i - 1] + (VO2_PCT_STOPS[i] - VO2_PCT_STOPS[i - 1]) * t);
+        }
+      }
+      return 99;
+    }
+    function vo2Category(pct) {
+      if (pct == null) return null;
+      if (pct < 10) return VO2_CATS[0];
+      if (pct < 30) return VO2_CATS[1];
+      if (pct < 50) return VO2_CATS[2];
+      if (pct < 70) return VO2_CATS[3];
+      if (pct < 90) return VO2_CATS[4];
+      return VO2_CATS[5];
+    }
+    // Fitness age = the age at which this estimate would be the median (50th percentile). Solved by
+    // walking the table's age axis, so feeding a row's own median back in returns that row's age.
+    function fitnessAge(est, sex) {
+      if (est == null || !sex) return null;
+      const rows = VO2_NORMS[sex === 'female' ? 'female' : 'male'];
+      const medAt = age => vo2NormRow(sex, age)[2];
+      const lo = rows[0].age, hi = rows[rows.length - 1].age;
+      if (est >= medAt(lo)) return lo;      // fitter than the youngest row's median
+      if (est <= medAt(hi)) return hi;
+      for (let age = lo; age < hi; age++) {
+        const a = medAt(age), b = medAt(age + 1);
+        if (est <= a && est >= b) {
+          const t = (a - est) / (a - b);    // median falls with age
+          return Math.round((age + t) * 10) / 10;
+        }
+      }
+      return null;
+    }
+    function vo2TierLabel(v) {
+      if (!v) return 'Load data to estimate';
+      // The spread lives here rather than as a shaded band on the chart: the chart's background is
+      // already carrying the percentile zones, and two washes on one channel can't be told apart.
+      const spread = v.band ? ' · middle half ' + v.band[0].toFixed(1) + '–' + v.band[1].toFixed(1) : '';
+      if (v.tier === 1) return 'from ' + v.n + ' qualifying workout' + (v.n === 1 ? '' : 's') + ' · submaximal HR/speed' + spread;
+      if (v.tier === 2) return 'from HRmax/resting-HR ratio · log workouts for a sharper estimate' +
+        (v.band ? ' · ±' + ((v.band[1] - v.band[0]) / 2).toFixed(1) : '');
+      return 'from age, BMI and activity volume · least precise tier' +
+        (v.band ? ' · ±' + ((v.band[1] - v.band[0]) / 2).toFixed(1) : '');
+    }
+
     // ---------------- Finalize / Overview ----------------
     function finalize(statusMsg) {
       // True trailing 30-day baseline (this used to average the whole dataset while the UI
@@ -1153,15 +2119,31 @@
       hrvBaseline = hrvStats ? hrvStats.mean : 0;
       hrvBaselineSD = hrvStats ? hrvStats.sd : 0;
       buildRecoveryIndex();
+      buildVo2Index();
+      syncProfileInputs();
       updateOverview();
       renderActiveTab();
+      playEntrance();
       const days = new Set([...DATA.hrv, ...DATA.rhr, ...DATA.steps, ...DATA.sleep].map(r => r.date)).size;
       document.getElementById('dataStats').textContent = days ? days + ' days of data · ' + new Date().toLocaleDateString() : 'No data loaded';
       document.getElementById('uploadStatus').innerText = statusMsg || 'Ready';
       const hasData = DATA.hrv.length || DATA.rhr.length || DATA.steps.length || DATA.sleep.length || DATA.spo2.length || DATA.resp.length || DATA.energy.length;
       setDataButtons(hasData);
-      if (hasData) saveToIDB();
+      if (hasData) { saveToIDB(); saveProfile(); }
       hideLoader();
+    }
+
+    // A z-score chip beside a raw reading: the number alone doesn't say whether 48 ms is good for
+    // *you*. Ink stays a text token and the arrow glyph carries the sign, so the chip needs no
+    // colour of its own and can't collide with a status hue.
+    function setDevChip(id, value, stats) {
+      const node = document.getElementById(id);
+      if (!node) return;
+      if (value == null || !stats || !stats.sd || stats.n < MIN_BASELINE_DAYS) { node.textContent = ''; node.removeAttribute('title'); return; }
+      const z = (value - stats.mean) / stats.sd;
+      const arrow = Math.abs(z) < 0.5 ? '→' : z > 0 ? '↑' : '↓';
+      node.textContent = arrow + ' ' + Math.abs(z).toFixed(1) + ' SD';
+      node.title = 'vs your trailing ' + stats.n + '-day mean of ' + stats.mean.toFixed(1);
     }
 
     function updateOverview() {
@@ -1173,29 +2155,44 @@
 
       // Recovery — baseline-relative score from the index, with the absolute formula as fallback
       const recNow = latestRecovery();
+      setAccentFromRecovery(recNow ? recNow.score : null);
       if (recNow) {
         const rec = recNow.score;
-        const { cat, color } = recCategory(rec);
-        document.getElementById('recoveryScore').innerText = rec + '%';
-        document.getElementById('recoveryScore').style.color = color;
-        document.getElementById('recoveryCategory').innerText = cat;
-        document.getElementById('recoveryCategory').style.color = color;
+        const { cat, color, state } = recCategory(rec);
+        countUp('recoveryScore', rec, { suffix: '%' });
+        // The label itself stays in text ink; the dot beside it carries the band. A 3.6:1 red on
+        // 12-point text would fail AA, and colour must never be the only signal anyway.
+        document.getElementById('recoveryCategory').innerHTML =
+          '<span class="state-dot ' + state + '"></span>' + cat;
         updateGauge('recoveryCircle', rec, 100, color);
         document.getElementById('hrvVal').innerText = hrvLast ? Math.round(hrvLast.value) + ' ms' : '—';
         document.getElementById('rhrVal').innerText = rhrLast ? Math.round(rhrLast.value) + ' bpm' : '—';
+        const hrvHist = buildSeries(DATA.hrv, 'day', 'avg').filter(p => p.value != null).map(p => p.value);
+        const rhrHist = buildSeries(DATA.rhr, 'day', 'avg').filter(p => p.value != null).map(p => p.value);
+        setDevChip('hrvDev', hrvLast && hrvLast.value, meanSD(hrvHist.slice(-BASELINE_WINDOW - 1, -1)));
+        // RHR is inverted — lower is better — so the chip's sign is flipped to keep "up = good".
+        const rhrStats = meanSD(rhrHist.slice(-BASELINE_WINDOW - 1, -1));
+        setDevChip('rhrDev', rhrLast && rhrStats ? (2 * rhrStats.mean - rhrLast.value) : null, rhrStats);
       } else {
         document.getElementById('recoveryScore').innerText = '—';
-        document.getElementById('recoveryCategory').innerText = 'NO DATA';
+        document.getElementById('recoveryCategory').innerHTML = '<span class="state-dot"></span>NO DATA';
+        document.getElementById('hrvDev').textContent = '';
+        document.getElementById('rhrDev').textContent = '';
       }
+      const recSeries = Object.keys(RECOVERY).sort().slice(-30).map(d => RECOVERY[d].score);
+      sparkline('recoverySpark', recSeries, recNow ? recCategory(recNow.score).color : TOKENS['status-good']);
 
       // Strain
       if (stepsLast) {
         const strain = strainFromSteps(stepsLast.value);
-        document.getElementById('strainScore').innerText = strain.toFixed(1);
-        updateGauge('strainCircle', strain, 21, '#29b6f6');
+        countUp('strainScore', strain, { decimals: 1 });
+        updateGauge('strainCircle', strain, 21, TOKENS['series-blue']);
         document.getElementById('stepsVal').innerText = Math.round(stepsLast.value).toLocaleString();
       } else { document.getElementById('strainScore').innerText = '—'; document.getElementById('stepsVal').innerText = '—'; }
       document.getElementById('calsVal').innerText = energyLast ? Math.round(energyLast.value).toLocaleString() + ' kcal' : '—';
+      sparkline('strainSpark',
+        buildSeries(DATA.steps, 'day', 'sum').slice(-30).map(p => p.value == null ? null : strainFromSteps(p.value)),
+        TOKENS['series-blue']);
 
       // Sleep
       if (sleepLast) {
@@ -1204,7 +2201,8 @@
         const perf = Math.round((sleepLast.total / SLEEP_NEED_H) * 100);
         const cat = perf >= 90 ? '≥90% OF NEED' : perf >= 75 ? '75-90% OF NEED' : '<75% OF NEED';
         document.getElementById('sleepCat').innerText = cat;
-        const deep = sleepLast.deep, rem = sleepLast.rem, core = sleepLast.core, awake = sleepLast.awake;
+        // Same display merge as the stage chart: AsleepUnspecified is core sleep with no detail.
+        const deep = sleepLast.deep, rem = sleepLast.rem, core = sleepLast.core + sleepLast.unspec, awake = sleepLast.awake;
         const tot = sleepLast.total || 1;
         const setW = (id, v) => document.getElementById(id).style.width = (v / tot * 100) + '%';
         setW('ovDeep', deep); setW('ovRem', rem); setW('ovCore', core); setW('ovAwake', awake);
@@ -1215,6 +2213,27 @@
         const rest = deep + rem;
         document.getElementById('ovRestorative').innerText = '✓ Restorative Sleep (Deep + REM): ' + Math.round(rest) + 'h (' + Math.round(rest / tot * 100) + '%)';
       } else { document.getElementById('sleepDuration').innerText = '—'; document.getElementById('sleepCat').innerText = 'NO DATA'; }
+      sparkline('sleepSpark', buildSleepTotal('day').slice(-30).map(p => p.value), TOKENS['series-violet']);
+
+      // VO2 max — our own estimate; see buildVo2Index().
+      const v = latestVo2();
+      if (v) {
+        countUp('ovVo2', v.est, { decimals: 1 });
+        document.getElementById('ovVo2Note').textContent = vo2TierLabel(v);
+        const fa = fitnessAge(v.est, PROFILE.sex);
+        const faFloor = PROFILE.sex ? VO2_NORMS[PROFILE.sex === 'female' ? 'female' : 'male'][0].age : null;
+        document.getElementById('ovFitAge').textContent = fa != null ? (fa === faFloor ? '≤' + Math.round(fa) + ' yrs' : Math.round(fa) + ' yrs') : '—';
+        const pct = vo2Percentile(v.est, PROFILE.sex, PROFILE.age);
+        document.getElementById('ovVo2Pct').textContent = pct != null ? pct + 'th' : '—';
+      } else {
+        document.getElementById('ovVo2').textContent = '—';
+        document.getElementById('ovVo2Note').textContent = DATA.rhr.length ? 'Needs your age and sex — see the VO₂ Max tab' : 'Load data to estimate';
+        document.getElementById('ovFitAge').textContent = '—';
+        document.getElementById('ovVo2Pct').textContent = '—';
+      }
+      // Same-tier only, for the same reason the trend chart filters: a tier switch is a change of
+      // method, and the sparkline would show it as a step.
+      sparkline('vo2Spark', Object.keys(VO2).sort().filter(d => v && VO2[d].tier === v.tier).slice(-60).map(d => VO2[d].est), TOKENS['series-blue']);
 
       // Vitals
       const spo2Last = lastNonNull(buildSeries(DATA.spo2, 'day', 'avg'));
@@ -1229,6 +2248,7 @@
       setStatus('vitalResps', respLast && respLast.value >= 12 && respLast.value <= 20, respLast ? '✓ ' + respLast.value.toFixed(1) + ' rpm' : '—');
 
       generateInsights(hrvLast, rhrLast, sleepLast, spo2Last, recNow);
+      updateVo2Panel();
 
       // Recovery detail header
       if (recNow) {
@@ -1245,12 +2265,12 @@
       if (stepsLast) {
         const strain = strainFromSteps(stepsLast.value);
         document.getElementById('strainBig').innerText = strain.toFixed(1);
-        document.getElementById('strainBig').style.color = '#29b6f6';
+        document.getElementById('strainBig').style.color = TOKENS['series-blue'];
       }
       if (sleepLast) {
         const h = Math.floor(sleepLast.total), m = Math.round((sleepLast.total - h) * 60);
         document.getElementById('sleepBig').innerText = h + 'h ' + m + 'm';
-        document.getElementById('sleepBig').style.color = '#ab47bc';
+        document.getElementById('sleepBig').style.color = TOKENS['series-violet'];
       }
     }
 
@@ -1309,7 +2329,226 @@
       return `<div class="insight-card ${cls}"><div class="insight-icon">${icon}</div><div class="insight-content"><div class="insight-title" style="color:${color};">${title}</div><div class="insight-body">${body}</div></div></div>`;
     }
 
-    // ---------------- Tab rendering ----------------
+    // ---------------- VO2 tab ----------------
+    function syncProfileInputs() {
+      const set = (id, v) => { const n = document.getElementById(id); if (n && (n.value === '' || document.activeElement !== n)) n.value = v == null ? '' : v; };
+      set('pfAge', PROFILE.age); set('pfSex', PROFILE.sex);
+      set('pfHeight', PROFILE.heightCm); set('pfWeight', PROFILE.weightKg);
+      const src = document.getElementById('profileSource');
+      if (!src) return;
+      const parts = [];
+      const label = { age: 'Age', sex: 'Sex', heightCm: 'Height', weightKg: 'Weight' };
+      const missing = [];
+      Object.keys(label).forEach(k => {
+        if (PROFILE[k] == null || PROFILE[k] === '') { missing.push(label[k]); return; }
+        parts.push(label[k] + ': ' + (PROFILE.source[k] === 'user' ? 'you entered this' : 'from your export'));
+      });
+      src.textContent = parts.join(' · ') + (missing.length ? (parts.length ? ' — ' : '') + 'Missing: ' + missing.join(', ') : '');
+    }
+
+    function readProfileInputs() {
+      const num = id => { const v = parseFloat(document.getElementById(id).value); return isFinite(v) ? v : null; };
+      const next = { age: num('pfAge'), sex: document.getElementById('pfSex').value || null, heightCm: num('pfHeight'), weightKg: num('pfWeight') };
+      let changed = false;
+      Object.keys(next).forEach(k => {
+        if (next[k] !== PROFILE[k]) { PROFILE[k] = next[k]; PROFILE.source[k] = next[k] == null ? undefined : 'user'; changed = true; }
+      });
+      if (!changed) return;
+      // Age/sex/BMI feed the tier-2 fallback and the whole tier-3 model, plus the norm lookups, so
+      // the index has to be rebuilt rather than just relabelled.
+      buildVo2Index();
+      updateOverview();
+      if (currentTab === 'vo2') renderVo2();
+      syncProfileInputs();
+      saveProfile();
+    }
+
+    // Percentile zones behind the trend, in the validated ordinal blue ramp.
+    function vo2Zones() {
+      if (!PROFILE.sex || !PROFILE.age) return null;
+      const p = vo2NormRow(PROFILE.sex, PROFILE.age);
+      const ramp = [TOKENS['ramp-1'], TOKENS['ramp-2'], TOKENS['ramp-3'], TOKENS['ramp-4'], TOKENS['ramp-5']];
+      // Darker = fitter, so the ramp runs from the bottom band up.
+      return [
+        { lo: 0, hi: p[0], color: ramp[4], label: '<10th' },
+        { lo: p[0], hi: p[1], color: ramp[3], label: '10–30th' },
+        { lo: p[1], hi: p[2], color: ramp[2], label: '30–50th' },
+        { lo: p[2], hi: p[3], color: ramp[1], label: '50–70th' },
+        { lo: p[3], hi: 99, color: ramp[0], label: '70th+' }
+      ];
+    }
+
+    function renderVo2() {
+      const svg = document.getElementById('vo2Chart');
+      const keys = Object.keys(VO2).sort();
+      // Set before any early return, or the checkbox label reads blank in the empty state.
+      document.getElementById('appleVo2Count').textContent = DATA.appleVo2.length ? '(' + DATA.appleVo2.length + ')' : '(none in export)';
+      if (!keys.length) {
+        showNoData(svg, PROFILE.age && PROFILE.sex ? 'No estimate yet — needs resting HR or a workout' : 'Add your age and sex below to estimate');
+        renderChartLegend(svg, []);
+        // Reset every node this function writes elsewhere. Without this, Clear Data leaves the
+        // subtitle and the calibration footnote describing the dataset that was just wiped.
+        document.getElementById('vo2Sub').textContent = 'Rolling ' + VO2_WINDOW +
+          '-day median of our own estimate. Load data to see which method was used.';
+        document.getElementById('vo2Calib').style.display = 'none';
+        document.getElementById('vo2AppleLegend').style.display = 'none';
+        return;
+      }
+      // Only ONE tier goes on the line. Tiers are different measuring instruments — a tier-2 number
+      // beside a tier-1 number produces a cliff at the switchover that reads as a real fitness
+      // change and isn't one (measured on sample data: a 7-point drop the day tier 1 took over).
+      // Days from the other tiers are dropped to null, so the line simply has a gap there.
+      const latest = latestVo2();
+      const tier = latest.tier;
+      const plotted = keys.filter(d => VO2[d].tier === tier);
+      const dropped = keys.length - plotted.length;
+      // Build the trend on the SAME granularity toggle as every other chart, so day/week/month is
+      // consistent across tabs.
+      const series = buildSeries(plotted.map(d => ({ date: d, value: VO2[d].est })), currentGran, 'avg');
+      const idxOf = new Map();
+      series.forEach((p, i) => idxOf.set(p.key, i));
+      // Map a raw date onto a point index by bucketing it exactly the way buildSeries did.
+      const dateToIndex = d => {
+        const i = idxOf.get(bucketKey(d, currentGran));
+        return i === undefined ? null : i;
+      };
+
+      const extraDots = [];
+      // Raw per-workout tier-1 estimates, faint, so the median line is visibly a summary of real
+      // observations rather than a black box.
+      (vo2Meta.raw || []).forEach(t => {
+        const i = dateToIndex(t.date);
+        if (i != null) extraDots.push({ i, value: t.est, color: TOKENS['series-blue'], opacity: 0.3 });
+      });
+      const showApple = document.getElementById('showAppleVo2').checked;
+      if (showApple) {
+        DATA.appleVo2.forEach(r => {
+          const i = dateToIndex(r.date);
+          if (i != null) extraDots.push({ i, value: r.value, hollow: true });
+        });
+      }
+      document.getElementById('vo2AppleLegend').style.display = showApple ? '' : 'none';
+
+      const rawCount = extraDots.filter(d => !d.hollow).length;
+      const sub = document.getElementById('vo2Sub');
+      if (sub) {
+        sub.textContent = 'Rolling ' + VO2_WINDOW + '-day median of our own estimate, from the ' +
+          (tier === 1 ? 'submaximal HR/speed' : tier === 2 ? 'HRmax/resting-HR' : 'non-exercise') + ' method.' +
+          (rawCount ? ' Faint dots are the ' + rawCount + ' individual workout estimates behind it — their spread is the real uncertainty.' : '') +
+          (vo2Zones() ? ' The rail on the right marks percentile bands for your age and sex.' : ' Add your age and sex below to see percentile bands.') +
+          (dropped ? ' ' + dropped + ' earlier day' + (dropped === 1 ? '' : 's') + ' used a different method and ' +
+            (dropped === 1 ? 'is' : 'are') + ' left out — plotting them together would draw a step change that isn\'t real.' : '') +
+          (compareOn ? ' Compare mode is on, so only the latest window is drawn.' : '');
+      }
+      drawLine(svg, series, {
+        color: TOKENS['series-blue'], unit: '', decimals: 1, name: 'VO₂ max (our estimate)',
+        hbands: vo2Zones(),
+        extraDots
+      });
+
+      // Calibration footnote — only meaningful when Apple has actually written something.
+      const calib = document.getElementById('vo2Calib');
+      if (showApple && DATA.appleVo2.length) {
+        const appleLast = DATA.appleVo2.slice().sort((a, b) => a.date < b.date ? -1 : 1).pop();
+        const d = latest.est - appleLast.value;
+        calib.style.display = '';
+        calib.textContent = 'our estimate ' + latest.est.toFixed(1) + ' · Apple ' + appleLast.value.toFixed(1) +
+          ' (' + appleLast.date + ') · Δ ' + (d >= 0 ? '+' : '') + d.toFixed(1) +
+          ' — Apple\'s readings are shown for comparison only and never feed our model.';
+      } else {
+        calib.style.display = 'none';
+      }
+    }
+
+    function updateVo2Panel() {
+      const v = latestVo2();
+      const keys = Object.keys(VO2).sort();
+      if (!v) {
+        document.getElementById('vo2Hero').textContent = '—';
+        document.getElementById('vo2Delta').textContent = '—';
+        document.getElementById('vo2Tier').textContent = PROFILE.age && PROFILE.sex
+          ? 'Not enough data yet — needs resting HR, or age + height + weight for the fallback model'
+          : 'Add your age and sex in the Profile card below';
+        ['vo2FitAge', 'vo2Pct', 'vo2Cat', 'vo2N'].forEach(id => document.getElementById(id).textContent = '—');
+        document.getElementById('vo2MethodBody').innerHTML = vo2MethodHtml(null);
+        return;
+      }
+      countUp('vo2Hero', v.est, { decimals: 1 });
+      document.getElementById('vo2Tier').textContent = vo2TierLabel(v);
+
+      // Delta vs ~90 days ago, compared only against days derived the SAME way — a tier change is a
+      // change of instrument, and differencing across it would report it as a change in fitness.
+      const cutoff = new Date(v.date + 'T00:00:00'); cutoff.setDate(cutoff.getDate() - 90);
+      const from = ymd(cutoff);
+      const sameTier = keys.filter(d => VO2[d].tier === v.tier);
+      const older = sameTier.filter(d => d <= from);
+      const refKey = older.length ? older[older.length - 1] : sameTier[0];
+      const delta = refKey === v.date ? null : v.est - VO2[refKey].est;
+      const dEl = document.getElementById('vo2Delta');
+      if (delta == null) dEl.textContent = 'no earlier estimate to compare';
+      else {
+        const arrow = Math.abs(delta) < 0.2 ? '→' : delta > 0 ? '↑' : '↓';
+        dEl.textContent = arrow + ' ' + (delta >= 0 ? '+' : '−') + Math.abs(delta).toFixed(1) +
+          ' vs ' + refKey + (older.length ? ' (≈90 days ago)' : ' (earliest with this method)');
+      }
+
+      const fa = fitnessAge(v.est, PROFILE.sex);
+      const faFloor = PROFILE.sex ? VO2_NORMS[PROFILE.sex === 'female' ? 'female' : 'male'][0].age : null;
+      document.getElementById('vo2FitAge').textContent = fa != null ? (fa === faFloor ? '≤' + Math.round(fa) : Math.round(fa)) : '—';
+      document.getElementById('vo2FitAgeNote').textContent = (fa != null && PROFILE.age)
+        // The norm table starts at 25, so anything fitter than a 25-year-old's median pins there.
+        // Saying "25" flat would imply a precision the table doesn't have.
+        ? (fa === faFloor ? 'at or above the median for a ' + faFloor + '-year-old — the table starts there'
+          : fa < PROFILE.age ? (Math.round(PROFILE.age - fa)) + ' yrs younger than your actual age'
+          : fa > PROFILE.age ? (Math.round(fa - PROFILE.age)) + ' yrs older than your actual age'
+          : 'matches your actual age')
+        : (PROFILE.sex ? 'enter your age to compare' : 'needs your biological sex');
+      const pct = vo2Percentile(v.est, PROFILE.sex, PROFILE.age);
+      document.getElementById('vo2Pct').textContent = pct != null ? pct + 'th' : '—';
+      document.getElementById('vo2Cat').textContent = vo2Category(pct) || '—';
+      document.getElementById('vo2N').textContent = v.tier === 1 ? v.n : (vo2Meta.tier1Count || 0);
+      document.getElementById('vo2NNote').textContent = v.tier === 1
+        ? 'workouts in the trailing ' + VO2_WINDOW + ' days'
+        : 'qualifying workouts found — ' + VO2_MIN_TIER1 + ' in ' + VO2_WINDOW + ' days unlocks the direct method';
+      document.getElementById('vo2MethodBody').innerHTML = vo2MethodHtml(v);
+      syncProfileInputs();
+    }
+
+    // The disclosure exists so a derived number is never presented as an oracle: it names the exact
+    // formula that produced the figure on screen and the inputs it used.
+    function vo2MethodHtml(v) {
+      const hm = vo2Meta.hrMax
+        ? Math.round(vo2Meta.hrMax) + ' bpm (' + (vo2Meta.hrMaxSource === 'observed'
+            ? 'the median of the top 10% of your daily heart-rate maxima over the last year — a robust high quantile rather than the raw max, so a few sensor artifacts can\'t inflate it'
+            : 'Tanaka: 208 − 0.7 × age, because there isn\'t enough heart-rate history yet') + ')'
+        : 'unknown — needs heart-rate data or your age';
+      const tier = v ? v.tier : null;
+      const rows = [
+        ['Tier 1 — submaximal HR/speed <em>(most accurate)</em>',
+         'For each workout of 8+ minutes with distance and average HR: the ACSM metabolic equations give the oxygen cost of the pace you actually held (<code>0.2 × m/min + 3.5</code> running, <code>0.1 × m/min + 3.5</code> walking); the heart-rate-reserve fraction <code>f = (avgHR − RHR) / (HRmax − RHR)</code> says what share of your capacity that cost consumed; <code>VO₂max = 3.5 + (VO₂ − 3.5) / f</code> extrapolates to 100%. We pool the trailing ' + VO2_WINDOW + ' days and take the <strong>median</strong>, so one bad GPS trace can\'t move the number. Workouts outside the valid range (f below 0.40 or above 0.95, result outside 15–85) are <strong>discarded, not clamped</strong>.'],
+        ['Tier 2 — HRmax / resting-HR ratio',
+         'Uth–Sørensen: <code>VO₂max ≈ 15.3 × HRmax / RHR</code>. Used when there aren\'t ' + VO2_MIN_TIER1 + ' qualifying workouts in the window. Needs no workouts at all.'],
+        ['Tier 3 — non-exercise model',
+         'Jackson: <code>56.363 + 1.921×PA − 0.381×age − 0.754×BMI + 10.987×(male?1:0)</code>, where PA is a 0–7 activity rating we derive from your exercise minutes and step volume. Published standard error ≈ ' + JACKSON_SEE + ' ml/kg/min, which is the width of the band on the chart.']
+      ];
+      let html = '<p><strong>HRmax used:</strong> ' + hm + '</p>';
+      if (v) html += '<p><strong>This figure came from tier ' + v.tier + '.</strong></p>';
+      html += '<ul style="margin:8px 0 0 18px; padding:0;">';
+      rows.forEach((r, i) => {
+        const on = tier === i + 1;
+        html += '<li style="margin-bottom:8px;' + (on ? '' : 'opacity:.72;') + '"><strong>' + r[0] + '</strong><br>' + r[1] + '</li>';
+      });
+      html += '</ul>';
+      html += '<p style="margin-top:10px;">Percentile, category and fitness age come from an age/sex norm table (' +
+        'ACSM-style cardiorespiratory-fitness percentiles). <strong>That table has not been verified against a primary ' +
+        'source</strong> — it affects only those three derived figures, never the estimate itself.</p>';
+      html += '<p style="margin-top:8px;">Apple\'s own <code>VO2Max</code> records are never used as an input. They are ' +
+        'parsed only for the optional overlay above, because Apple writes them rarely (outdoor walk/run with the watch) ' +
+        'and a chart of them alone would be a handful of dots.</p>';
+      return html;
+    }
+
+
     // Windows used by the compare overlay: enough buckets to see a trend at each granularity.
     const COMPARE_WINDOW = { day: 7, week: 4, month: 3 };
 
@@ -1331,7 +2570,15 @@
       if (!compareOn) { lineChart(svg, series, opts); return; }
       const pair = comparePair(series, currentGran);
       if (!pair) { lineChart(svg, series, opts); return; }
+      // extraDots carry indices into the FULL series; compare mode draws only the tail window, so
+      // shift them and drop any that fall outside it — otherwise they'd land on the wrong day.
+      let extra = opts && opts.extraDots;
+      if (extra && extra.length) {
+        const off = series.length - pair.cur.length;
+        extra = extra.map(d => Object.assign({}, d, { i: d.i - off })).filter(d => d.i >= 0);
+      }
       lineChart(svg, pair.cur, Object.assign({}, opts, {
+        extraDots: extra,
         compare: { points: pair.prev, name: 'Previous ' + pair.prev.length, currentName: 'Latest ' + pair.cur.length }
       }));
     }
@@ -1340,13 +2587,13 @@
       const hrvBand = hrvBaselineSD ? { lo: hrvBaseline - hrvBaselineSD, hi: hrvBaseline + hrvBaselineSD } : null;
       if (currentTab === 'overview') return;
       if (currentTab === 'recovery') {
-        drawLine(document.getElementById('hrvChart'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: '#00e676', unit: ' ms', baseline: hrvBaseline, band: hrvBand, round: true });
-        drawLine(document.getElementById('rhrChart'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: '#ff1744', unit: ' bpm', round: true });
+        drawLine(document.getElementById('hrvChart'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: TOKENS['series-aqua'], unit: ' ms', baseline: hrvBaseline, band: hrvBand, round: true });
+        drawLine(document.getElementById('rhrChart'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: TOKENS['series-red'], unit: ' bpm', round: true });
       } else if (currentTab === 'strain') {
-        drawLine(document.getElementById('stepsChart'), buildSeries(DATA.steps, currentGran, 'sum'), { color: '#29b6f6', unit: '', round: true });
-        drawLine(document.getElementById('energyChart'), buildSeries(DATA.energy, currentGran, 'sum'), { color: '#ffea00', unit: ' kcal', round: true });
+        drawLine(document.getElementById('stepsChart'), buildSeries(DATA.steps, currentGran, 'sum'), { color: TOKENS['series-blue'], unit: '', round: true });
+        drawLine(document.getElementById('energyChart'), buildSeries(DATA.energy, currentGran, 'sum'), { color: TOKENS['series-yellow'], unit: ' kcal', round: true });
       } else if (currentTab === 'sleep') {
-        drawLine(document.getElementById('sleepTotalChart'), buildSleepTotal(currentGran), { color: '#ab47bc', unit: 'h', decimals: 1, baseline: SLEEP_NEED_H });
+        drawLine(document.getElementById('sleepTotalChart'), buildSleepTotal(currentGran), { color: TOKENS['series-violet'], unit: 'h', decimals: 1, baseline: SLEEP_NEED_H });
         // Stage breakdown is deliberately never overlaid — two stacked-bar series are unreadable.
         const s = buildSleepSeries(currentGran);
         const stageSub = document.getElementById('sleepStageSub');
@@ -1357,10 +2604,14 @@
         if (s) stackedBarChart(document.getElementById('sleepStageChart'), s.labels, s.stages);
         else showNoData(document.getElementById('sleepStageChart'));
       } else if (currentTab === 'vitals') {
-        drawLine(document.getElementById('vHrv'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: '#00e676', unit: ' ms', baseline: hrvBaseline, band: hrvBand, round: true });
-        drawLine(document.getElementById('vRhr'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: '#ff1744', unit: ' bpm', round: true });
-        drawLine(document.getElementById('vSpo2'), buildSeries(DATA.spo2, currentGran, 'avg'), { color: '#26c6da', unit: '%', decimals: 1 });
-        drawLine(document.getElementById('vResp'), buildSeries(DATA.resp, currentGran, 'avg'), { color: '#ffb74d', unit: ' rpm', decimals: 1 });
+        // Each of these four carries its own <h3>, which is the direct label the validator's CVD
+        // WARN on this 4-colour set requires — don't drop the headings.
+        drawLine(document.getElementById('vHrv'), buildSeries(DATA.hrv, currentGran, 'avg'), { color: TOKENS['series-aqua'], unit: ' ms', baseline: hrvBaseline, band: hrvBand, round: true });
+        drawLine(document.getElementById('vRhr'), buildSeries(DATA.rhr, currentGran, 'avg'), { color: TOKENS['series-red'], unit: ' bpm', round: true });
+        drawLine(document.getElementById('vSpo2'), buildSeries(DATA.spo2, currentGran, 'avg'), { color: TOKENS['series-blue'], unit: '%', decimals: 1 });
+        drawLine(document.getElementById('vResp'), buildSeries(DATA.resp, currentGran, 'avg'), { color: TOKENS['series-yellow'], unit: ' rpm', decimals: 1 });
+      } else if (currentTab === 'vo2') {
+        renderVo2();
       }
     }
     function buildSleepTotal(gran) {
@@ -1393,6 +2644,12 @@
       compareOn = !compareOn;
       e.currentTarget.classList.toggle('active', compareOn);
       renderActiveTab();
+    });
+
+    // VO2 controls
+    document.getElementById('showAppleVo2').addEventListener('change', () => { hideChartTooltip(); renderVo2(); });
+    ['pfAge', 'pfSex', 'pfHeight', 'pfWeight'].forEach(id => {
+      document.getElementById(id).addEventListener('change', readProfileInputs);
     });
 
     // ---------------- Loader ----------------
@@ -1462,21 +2719,52 @@
           DATA.sleep.push({ date: ds, stage: 'rem', hours: rem });
           DATA.sleep.push({ date: ds, stage: 'core', hours: core });
           DATA.sleep.push({ date: ds, stage: 'awake', hours: awake });
+
+          // Heart-rate day aggregates, so HRmax can be observed rather than guessed from age.
+          const hrMaxDay = 150 + Math.random() * 30;
+          DATA.hrDay[ds] = { min: Math.round(rhr - 2), max: Math.round(hrMaxDay), sum: 0, n: 0 };
+          DATA.hrDay[ds].n = 1440;
+          DATA.hrDay[ds].sum = 74 * 1440;
+          DATA.exercise.push({ date: ds, value: Math.round(20 + Math.random() * 40) });
+          DATA.distance.push({ date: ds, value: Math.round(steps * 0.72) });
+
+          // A run every third day, with the pace and HR that produce a plausible tier-1 estimate.
+          if (i % 3 === 0) {
+            const minutes = 30 + Math.random() * 20;
+            const speed = 165 + Math.random() * 25;          // m/min ≈ 5:30–6:05 /km
+            DATA.workouts.push({
+              date: ds, type: 'Running', minutes: Math.round(minutes),
+              metres: Math.round(speed * minutes),
+              avgHR: Math.round(150 + Math.random() * 10),
+              maxHR: Math.round(hrMaxDay), kcal: Math.round(minutes * 11)
+            });
+          }
+          // Apple writes VO2Max rarely — roughly monthly here, deliberately offset from our own
+          // estimate so the calibration overlay has something to actually show.
+          if (i % 30 === 0) DATA.appleVo2.push({ date: ds, value: Math.round((42 + Math.random() * 3) * 10) / 10 });
         }
-        finalize('✓ Loaded 91 days of sample data');
+        // Sample profile, marked as export-sourced so the Profile card reads honestly.
+        PROFILE.age = 34; PROFILE.sex = 'male'; PROFILE.heightCm = 178; PROFILE.weightKg = 74;
+        PROFILE.source = { age: 'export', sex: 'export', heightCm: 'export', weightKg: 'export' };
+        finalize('✓ Loaded 91 days of sample data · ' + DATA.workouts.length + ' workouts');
       }, 500);
     }
 
     // Init empty gauges
     document.addEventListener('DOMContentLoaded', async () => {
-      updateGauge('recoveryCircle', 0, 100, '#00e676');
-      updateGauge('strainCircle', 0, 21, '#29b6f6');
+      updateGauge('recoveryCircle', 0, 100, TOKENS['status-good']);
+      updateGauge('strainCircle', 0, 21, TOKENS['series-blue']);
       try {
+        // Profile first: buildVo2Index() inside finalize() needs age/sex to be in place already.
+        await loadProfile();
+        syncProfileInputs();
         const saved = await loadFromIDB();
         const ok = saved && (saved.hrv && saved.hrv.length || saved.sleep && saved.sleep.length ||
           saved.steps && saved.steps.length || saved.rhr && saved.rhr.length);
         if (ok) {
-          DATA = saved;
+          // Merge over a fresh shape: data saved by an older version predates hrDay/workouts/
+          // appleVo2 and would otherwise leave those undefined for every consumer.
+          DATA = Object.assign(emptyData(), saved);
           finalize('✓ Loaded saved data from this device');
         }
       } catch (e) { console.warn('auto-load failed', e); }
